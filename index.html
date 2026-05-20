@@ -352,12 +352,17 @@ const CHANNELS = {
 };
 
 const STATUS = {
-  pendiente:{label:'Pendiente',badge:'by'},
-  pagado:{label:'Pagado',badge:'bb'},
-  preparando:{label:'Preparando',badge:'bp'},
-  enviado:{label:'Enviado',badge:'bo'},
-  entregado:{label:'Entregado',badge:'bg'},
-  cancelado:{label:'Cancelado',badge:'br'}
+  pendiente: {label:'Pendiente',  badge:'by'},
+  preparando:{label:'Preparando', badge:'bp'},
+  enviado:   {label:'Enviado',    badge:'bo'},
+  entregado: {label:'Entregado',  badge:'bg'},
+  cancelado: {label:'Cancelado',  badge:'br'}
+};
+
+const PAGO = {
+  sinpagar:{label:'Sin cobrar', badge:'br'},
+  señado:  {label:'Señado',     badge:'by'},
+  pagado:  {label:'Cobrado',    badge:'bg'}
 };
 
 const DEFAULT_MATERIALS = [
@@ -414,6 +419,13 @@ async function loadState() {
       // Validación básica
       if (data && (Array.isArray(data.orders) || Array.isArray(data.characters))) {
         Object.assign(state, data);
+        // Migrar esquema antiguo: status 'pagado' → entregado + pago campo separado
+        if (state.orders) {
+          state.orders.forEach(o => {
+            if (o.status === 'pagado') { o.status = 'entregado'; o.pago = 'pagado'; }
+            if (!o.pago) o.pago = (o.status === 'entregado') ? 'pagado' : 'sinpagar';
+          });
+        }
       } else {
         seedData();
       }
@@ -526,9 +538,21 @@ function getC(id) { return state.characters.find(c=>c.id===id); }
 function getI(id) { return state.inventory[id]||{stock:0,minStock:5,price:4500,cost:1200}; }
 function totalStock() { return Object.values(state.inventory).reduce((s,v)=>s+(v.stock||0),0); }
 function ym(offset=0) { const d=new Date(); d.setMonth(d.getMonth()+offset); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
-function monthRev(m) { return state.orders.filter(o=>o.date&&o.date.startsWith(m)).reduce((s,o)=>s+(o.total||0),0); }
+// Solo cuenta ingresos de pedidos COBRADOS (pago = 'pagado')
+function monthRev(m) { return state.orders.filter(o=>o.date&&o.date.startsWith(m)&&o.pago==='pagado').reduce((s,o)=>s+(o.total||0),0); }
+function monthRevAll(m) { return state.orders.filter(o=>o.date&&o.date.startsWith(m)).reduce((s,o)=>s+(o.total||0),0); } // incluye no cobrados
 function monthCount(m) { return state.orders.filter(o=>o.date&&o.date.startsWith(m)).length; }
 function monthGastos(m) { return state.gastos.filter(g=>g.fecha&&g.fecha.startsWith(m)).reduce((s,g)=>s+(g.monto||0),0); }
+// Utilidad: formatea mes yyyy-mm → "Mayo 2026"
+function ymLabel(m) { const [y,mo]=m.split('-'); return new Date(+y,+mo-1,1).toLocaleDateString('es-AR',{month:'long',year:'numeric'}); }
+// Lista de meses con datos (pedidos o gastos) para el filtro
+function availableMonths() {
+  const ms=new Set();
+  state.orders.forEach(o=>{ if(o.date) ms.add(o.date.slice(0,7)); });
+  state.gastos.forEach(g=>{ if(g.fecha) ms.add(g.fecha.slice(0,7)); });
+  ms.add(ym(0)); ms.add(ym(-1)); ms.add(ym(-2));
+  return [...ms].sort().reverse();
+}
 
 function charDisplay(c) {
   if (!c) return '?';
@@ -584,30 +608,96 @@ function topbarAction() {
 // DASHBOARD
 // ═══════════════════════════════════════════════════
 
+let dashMonth = ym(0); // filtro de mes activo
+
 function renderDashboard() {
-  const tm=ym(0),lm=ym(-1);
-  const tRev=monthRev(tm),lRev=monthRev(lm),tOrd=monthCount(tm),lOrd=monthCount(lm);
-  const tGas=monthGastos(tm),profit=(tRev-tGas);
+  const tm=dashMonth, lm=ym(availableMonths().indexOf(tm)+1>=availableMonths().length?-1:-(availableMonths().indexOf(tm)+1));
+  const tRev=monthRev(tm), lRev=monthRev(lm);
+  const tOrd=monthCount(tm), lOrd=monthCount(lm);
+  const tGas=monthGastos(tm), profit=(tRev-tGas);
   const revChg=lRev?(((tRev-lRev)/lRev)*100).toFixed(0):0;
-  const pending=state.orders.filter(o=>['pendiente','pagado','preparando'].includes(o.status)).length;
+
+  const pendOrders=state.orders.filter(o=>['pendiente','preparando'].includes(o.status));
+  const unpaid=state.orders.filter(o=>o.pago==='sinpagar'&&o.status!=='cancelado');
+  const señado=state.orders.filter(o=>o.pago==='señado'&&o.status!=='cancelado');
   const low=state.characters.filter(c=>{const i=getI(c.id);return i.stock<=i.minStock;});
   const charSales={};
   state.orders.forEach(o=>o.items.forEach(i=>{if(!i.mystery)charSales[i.cid]=(charSales[i.cid]||0)+i.qty;}));
   const best=Object.entries(charSales).sort((a,b)=>b[1]-a[1])[0];
   const bestC=best?getC(best[0]):null;
 
+  // Pukis a preparar: items de pedidos pendiente/preparando, agrupados por personaje
+  const toMake={};
+  pendOrders.forEach(o=>o.items.forEach(i=>{
+    if(!i.mystery) toMake[i.cid]=(toMake[i.cid]||0)+i.qty;
+  }));
+
+  // Insights
+  const insights=[];
+  if(unpaid.length>0) insights.push({ico:'💰',type:'warn',msg:`Tenés <strong>${unpaid.length} pedido(s) sin cobrar</strong> por <strong>${ars(unpaid.reduce((s,o)=>s+o.total,0))}</strong>. Confirmá el pago antes de enviar.`});
+  if(señado.length>0) insights.push({ico:'🤝',type:'info',msg:`<strong>${señado.length} pedido(s) señados</strong> — falta cobrar el saldo de <strong>${ars(señado.reduce((s,o)=>s+o.total*0.5,0))}</strong> (aprox.).`});
+  low.forEach(c=>{const inv=getI(c.id);const pending=toMake[c.id]||0;insights.push({ico:'⚠️',type:'warn',msg:`<strong>${c.emoji} ${c.name}</strong> tiene solo ${inv.stock} unidades en stock${pending>0?` y ${pending} pedido(s) pendiente(s)`:''}. Considerá arrancar una nueva tanda.`});});
+  if(Object.keys(toMake).length>0) insights.push({ico:'🖨️',type:'info',msg:`Hay <strong>${Object.values(toMake).reduce((a,b)=>a+b,0)} Pukis por preparar</strong> para pedidos activos: ${Object.entries(toMake).map(([id,q])=>`${getC(id)?.emoji||'?'} ${getC(id)?.name||id} ×${q}`).join(', ')}.`});
+  if(+revChg<-10) insights.push({ico:'📉',type:'warn',msg:`Los ingresos de este mes bajaron un <strong>${Math.abs(revChg)}%</strong> vs el mes anterior. Puede ser buen momento para una promoción.`});
+  if(+revChg>10) insights.push({ico:'🚀',type:'ok',msg:`¡Los ingresos subieron un <strong>${revChg}%</strong> respecto al mes pasado! 🎉`});
+  if(bestC) insights.push({ico:'🏆',type:'ok',msg:`<strong>${bestC.emoji} ${bestC.name}</strong> es el Puki más adoptado con <strong>${best[1]} adopciones</strong>. Asegurate de tener stock suficiente.`});
+  if(profit<0&&tGas>0) insights.push({ico:'🔴',type:'warn',msg:`Este mes los gastos (${ars(tGas)}) superan los ingresos cobrados (${ars(tRev)}). Revisá si hay cobros pendientes.`});
+
+  const months=availableMonths();
+
   document.getElementById('content').innerHTML = `
-    ${low.length?`<div class="alert a-warn">⚠️ <div><strong>Stock bajo:</strong> ${low.map(c=>`${c.emoji} ${c.name} (${getI(c.id).stock} uds.)`).join(' · ')}</div></div>`:''}
+    <!-- Filtro de mes -->
+    <div class="flex aic g2" style="margin-bottom:16px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:700;color:var(--text-muted)">Período:</span>
+      ${months.slice(0,6).map(m=>`<button class="f-btn ${dashMonth===m?'active':''}" onclick="dashMonth='${m}';renderDashboard()">${ymLabel(m)}</button>`).join('')}
+    </div>
+
     <div class="stats-grid">
-      <div class="stat-card"><div class="stat-icon si-green">💰</div><div><div class="stat-value">${ars(tRev)}</div><div class="stat-label">Ingresos este mes</div><div class="stat-change ${+revChg>=0?'up':'dn'}">${+revChg>=0?'↑':'↓'} ${Math.abs(revChg)}% vs mes ant.</div></div></div>
+      <div class="stat-card"><div class="stat-icon si-green">💰</div><div><div class="stat-value">${ars(tRev)}</div><div class="stat-label">Ingresos cobrados</div><div class="stat-change ${+revChg>=0?'up':'dn'}">${+revChg>=0?'↑':'↓'} ${Math.abs(revChg)}% vs mes ant.</div></div></div>
       <div class="stat-card"><div class="stat-icon si-yellow">🛒</div><div><div class="stat-value">${tOrd}</div><div class="stat-label">Pedidos este mes</div><div class="stat-change ${tOrd>=lOrd?'up':'dn'}">${tOrd>=lOrd?'↑':'↓'} ${Math.abs(tOrd-lOrd)} vs mes ant.</div></div></div>
       <div class="stat-card"><div class="stat-icon si-red">💸</div><div><div class="stat-value">${ars(tGas)}</div><div class="stat-label">Gastos este mes</div></div></div>
       <div class="stat-card"><div class="stat-icon si-green">📈</div><div><div class="stat-value">${ars(profit)}</div><div class="stat-label">Ganancia neta</div><div class="stat-change ${profit>=0?'up':'dn'}">${profit>=0?'✓ Positivo':'↓ Negativo'}</div></div></div>
-      <div class="stat-card"><div class="stat-icon si-brown">📦</div><div><div class="stat-value">${totalStock()}</div><div class="stat-label">Unidades en stock</div><div class="stat-change ${low.length===0?'up':'dn'}">${low.length===0?'✓ Saludable':`${low.length} bajo mínimo`}</div></div></div>
-      <div class="stat-card"><div class="stat-icon si-terra">📋</div><div><div class="stat-value">${pending}</div><div class="stat-label">Pedidos pendientes</div><div class="stat-change ${pending>0?'dn':'up'}">${pending>0?'Requieren atención':'✓ Todo al día'}</div></div></div>
-      ${bestC?`<div class="stat-card"><div class="stat-icon" style="background:${bestC.light}">${charDisplay(bestC)}</div><div><div class="stat-value">${bestC.name}</div><div class="stat-label">Más adoptado</div><div class="stat-change up">${best[1]} adopciones</div></div></div>`:''}
+      <div class="stat-card"><div class="stat-icon si-brown">📦</div><div><div class="stat-value">${totalStock()}</div><div class="stat-label">Stock total</div><div class="stat-change ${low.length===0?'up':'dn'}">${low.length===0?'✓ Saludable':`${low.length} bajo mínimo`}</div></div></div>
+      <div class="stat-card" style="cursor:pointer" onclick="navigate('orders')">
+        <div class="stat-icon si-terra">📋</div>
+        <div><div class="stat-value">${pendOrders.length}</div><div class="stat-label">Pedidos activos</div><div class="stat-change ${unpaid.length>0?'dn':'up'}">${unpaid.length>0?`${unpaid.length} sin cobrar`:'✓ Todo cobrado'}</div></div>
+      </div>
+      ${bestC?`<div class="stat-card"><div class="stat-icon" style="background:${bestC.light||'#f5f0e8'}">${charDisplay(bestC)}</div><div><div class="stat-value">${bestC.name}</div><div class="stat-label">Más adoptado</div><div class="stat-change up">${best[1]} adopciones</div></div></div>`:''}
       <div class="stat-card"><div class="stat-icon si-green">💚</div><div><div class="stat-value">${state.customers.length}</div><div class="stat-label">Adoptantes</div><div class="stat-change up">${state.orders.length} adopciones totales</div></div></div>
     </div>
+
+    <!-- Insights -->
+    ${insights.length?`
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">💡 Insights — qué hacer ahora</div></div>
+      <div class="card-body" style="padding:12px 18px">
+        ${insights.map(ins=>`
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-light)">
+            <span style="font-size:18px;flex-shrink:0;margin-top:1px">${ins.ico}</span>
+            <div style="font-size:13px;line-height:1.55;color:var(--text)">${ins.msg}</div>
+          </div>`).join('')}
+      </div>
+    </div>`:''}
+
+    <!-- Pukis a preparar -->
+    ${Object.keys(toMake).length?`
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header">
+        <div class="card-title">🖨️ Pukis por preparar (pedidos activos)</div>
+        <button class="btn btn-s btn-sm" onclick="navigate('orders')">Ver pedidos</button>
+      </div>
+      <div class="card-body">
+        <div style="display:flex;flex-wrap:wrap;gap:10px">
+          ${Object.entries(toMake).map(([cid,qty])=>{const c=getC(cid);const inv=getI(cid);const ok=inv.stock>=qty;return`<div style="background:${ok?'#edfae6':'#fde8e0'};border:1.5px solid ${ok?'#a3d98a':'#f5b8a0'};border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px">
+            ${charDisplay(c)}<div>
+              <div style="font-weight:700;font-size:13px">${c?.name||cid}</div>
+              <div style="font-size:12px;color:var(--text-muted)">×${qty} pedido(s) · Stock: ${inv.stock} ${ok?'✓':'⚠️ stock insuficiente'}</div>
+            </div>
+          </div>`;}).join('')}
+        </div>
+      </div>
+    </div>`:''}
+
     <div class="grid-2">
       <div class="card">
         <div class="card-header"><div class="card-title">📦 Stock por Personaje</div></div>
@@ -616,12 +706,12 @@ function renderDashboard() {
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><div class="card-title">💸 Gastos Recientes</div><button class="btn btn-s btn-sm" onclick="navigate('gastos')">Ver todos</button></div>
+        <div class="card-header"><div class="card-title">💸 Gastos del mes</div><button class="btn btn-s btn-sm" onclick="navigate('gastos')">Ver todos</button></div>
         <div class="tw">
           <table>
             <thead><tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Monto</th></tr></thead>
             <tbody>
-              ${[...state.gastos].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,6).map(g=>`<tr><td>${fdate(g.fecha)}</td><td>${g.desc}</td><td><span class="badge bter">${g.cat}</span></td><td><strong>${ars(g.monto)}</strong></td></tr>`).join('')}
+              ${[...state.gastos].filter(g=>g.fecha.startsWith(tm)).sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(g=>`<tr><td>${fdate(g.fecha)}</td><td>${g.desc}</td><td><span class="badge bter">${g.cat}</span></td><td><strong>${ars(g.monto)}</strong></td></tr>`).join('')||`<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:16px">Sin gastos este mes</td></tr>`}
             </tbody>
           </table>
         </div>
@@ -930,35 +1020,67 @@ function deleteProd(id){if(!confirm('¿Eliminar tanda?'))return;state.production
 // ORDERS
 // ═══════════════════════════════════════════════════
 
+let ordersMonth = 'all';
+
 function renderOrders() {
   let list=[...state.orders].sort((a,b)=>b.date.localeCompare(a.date));
+  // Filtro de estado/canal
   if(ordersFilter!=='all'){
-    if(Object.keys(STATUS).includes(ordersFilter))list=list.filter(o=>o.status===ordersFilter);
+    if(Object.keys(STATUS).includes(ordersFilter)) list=list.filter(o=>o.status===ordersFilter);
+    else if(Object.keys(PAGO).includes(ordersFilter)) list=list.filter(o=>(o.pago||'sinpagar')===ordersFilter);
     else list=list.filter(o=>o.channel===ordersFilter);
   }
+  // Filtro de mes
+  if(ordersMonth!=='all') list=list.filter(o=>o.date&&o.date.startsWith(ordersMonth));
+
+  const months=availableMonths();
+
   document.getElementById('content').innerHTML=`
     <div class="filters">
       <input class="search-in" type="text" placeholder="🔍 Buscar…" oninput="searchOrders(this.value)">
-      <button class="f-btn ${ordersFilter==='all'?'active':''}" onclick="setOF('all')">Todos (${state.orders.length})</button>
+      <button class="f-btn ${ordersFilter==='all'?'active':''}" onclick="setOF('all')">Todos</button>
       ${Object.entries(STATUS).map(([k,v])=>`<button class="f-btn ${ordersFilter===k?'active':''}" onclick="setOF('${k}')">${v.label}</button>`).join('')}
       <span style="width:1px;height:16px;background:var(--border)"></span>
+      ${Object.entries(PAGO).map(([k,v])=>`<button class="f-btn ${ordersFilter===k?'active':''}" onclick="setOF('${k}')">${v.label}</button>`).join('')}
+      <span style="width:1px;height:16px;background:var(--border)"></span>
       ${Object.entries(CHANNELS).map(([k,v])=>`<button class="f-btn ${ordersFilter===k?'active':''}" onclick="setOF('${k}')">${v.short}</button>`).join('')}
+    </div>
+    <div class="flex aic g2" style="margin-bottom:14px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:700;color:var(--text-muted)">Mes:</span>
+      <button class="f-btn ${ordersMonth==='all'?'active':''}" onclick="ordersMonth='all';renderOrders()">Todos</button>
+      ${months.slice(0,6).map(m=>`<button class="f-btn ${ordersMonth===m?'active':''}" onclick="ordersMonth='${m}';renderOrders()">${ymLabel(m)}</button>`).join('')}
       <button class="btn btn-s btn-sm" onclick="exportOrdersCSV()" style="margin-left:auto">⬇ CSV</button>
     </div>
     <div class="card">
       <div class="card-header"><div class="card-title">${list.length} pedido(s)</div><button class="btn btn-p btn-sm" onclick="openNewOrder()">＋ Nuevo Pedido</button></div>
       ${list.length?`<div class="tw"><table>
-        <thead><tr><th>ID</th><th>Fecha</th><th>Adoptante</th><th>Canal</th><th>Items</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+        <thead><tr><th>ID</th><th>Fecha</th><th>Adoptante</th><th>Canal</th><th>Items</th><th>Total</th><th>Estado envío</th><th>Cobro</th><th></th></tr></thead>
         <tbody id="orders-tbody">
-          ${list.map(o=>{const items=o.items.map(i=>i.mystery?`🎁×${i.qty}`:`${getC(i.cid)?.emoji||'?'}×${i.qty}`).join(' ');return`<tr>
-            <td style="font-family:monospace;font-size:11px;color:var(--text-muted)">#${o.id.slice(-5).toUpperCase()}</td>
-            <td>${fdate(o.date)}</td><td style="font-weight:500">${o.customerName||'—'}</td>
-            <td><span class="${CHANNELS[o.channel]?.badge||'bgr'}">${CHANNELS[o.channel]?.short||o.channel}</span></td>
-            <td style="font-size:12px">${items}</td>
-            <td><strong>${ars(o.total)}</strong></td>
-            <td><select class="fs" style="padding:3px 7px;font-size:11px;border-radius:6px;width:auto" onchange="updateStatus('${o.id}',this.value)">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${o.status===k?'selected':''}>${v.label}</option>`).join('')}</select></td>
-            <td><button class="btn-ico" onclick="deleteOrder('${o.id}')">🗑️</button></td>
-          </tr>`;}).join('')}
+          ${list.map(o=>{
+            const items=o.items.map(i=>i.mystery?`🎁×${i.qty}`:`${getC(i.cid)?.emoji||'?'}×${i.qty}`).join(' ');
+            const pago=o.pago||'sinpagar';
+            return`<tr>
+              <td style="font-family:monospace;font-size:11px;color:var(--text-muted)">#${o.id.slice(-5).toUpperCase()}</td>
+              <td>${fdate(o.date)}</td>
+              <td style="font-weight:500">${o.customerName||'—'}</td>
+              <td><span class="${CHANNELS[o.channel]?.badge||'bgr'}">${CHANNELS[o.channel]?.short||o.channel}</span></td>
+              <td style="font-size:12px">${items}</td>
+              <td><strong>${ars(o.total)}</strong></td>
+              <td>
+                <select class="fs" style="padding:3px 7px;font-size:11px;border-radius:6px;width:auto" onchange="updateStatus('${o.id}',this.value)">
+                  ${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${o.status===k?'selected':''}>${v.label}</option>`).join('')}
+                </select>
+              </td>
+              <td>
+                <select class="fs" style="padding:3px 7px;font-size:11px;border-radius:6px;width:auto;background:${pago==='pagado'?'#d9f0c8':pago==='señado'?'#fef3d4':'#fde0dc'}" onchange="updatePago('${o.id}',this.value)">
+                  ${Object.entries(PAGO).map(([k,v])=>`<option value="${k}" ${pago===k?'selected':''}>${v.label}</option>`).join('')}
+                </select>
+              </td>
+              <td style="display:flex;gap:4px">
+                <button class="btn-ico" onclick="openEditOrder('${o.id}')" title="Editar">✏️</button>
+                <button class="btn-ico" onclick="deleteOrder('${o.id}')" title="Eliminar">🗑️</button>
+              </td>
+            </tr>`;}).join('')}
         </tbody>
       </table></div>`:`<div class="empty"><div class="empty-ico">🛒</div><div class="empty-t">Sin pedidos</div></div>`}
     </div>`;
@@ -966,7 +1088,8 @@ function renderOrders() {
 
 function setOF(f){ordersFilter=f;renderOrders();}
 function searchOrders(v){document.querySelectorAll('#orders-tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(v.toLowerCase())?'':'none';});}
-function updateStatus(id,s){const o=state.orders.find(o=>o.id===id);if(o){o.status=s;save();toast('Estado actualizado');}}
+function updateStatus(id,s){const o=state.orders.find(o=>o.id===id);if(o){o.status=s;save();}}
+function updatePago(id,p){const o=state.orders.find(o=>o.id===id);if(o){o.pago=p;save();toast(p==='pagado'?'✅ Marcado como Cobrado':p==='señado'?'🤝 Marcado como Señado':'Sin cobrar');}}
 function deleteOrder(id){if(!confirm('¿Eliminar pedido?'))return;state.orders=state.orders.filter(o=>o.id!==id);save();toast('🗑️');renderOrders();}
 
 function exportOrdersCSV() {
@@ -982,45 +1105,95 @@ function exportOrdersCSV() {
   toast('⬇ CSV descargado');
 }
 
-function openNewOrder() {
+function orderFormHTML(o={}) {
   const charOpts=state.characters.map(c=>`<option value="${c.id}">${c.emoji} ${c.name} (Stock: ${getI(c.id).stock})</option>`).join('');
-  const custOpts=state.customers.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-  const chanOpts=Object.entries(CHANNELS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('');
-  openModal('🛒 Nuevo Pedido',`
-    <div class="fr"><div class="fg"><label class="fl">Canal</label><select class="fs" id="oc">${chanOpts}</select></div><div class="fg"><label class="fl">Fecha</label><input class="fi" type="date" id="od" value="${today()}"></div></div>
-    <div class="fg"><label class="fl">Adoptante</label><select class="fs" id="ocu" onchange="toggleNewCust(this.value)"><option value="">— Sin registrar —</option>${custOpts}<option value="new">➕ Nuevo adoptante…</option></select></div>
+  const custOpts=state.customers.map(c=>`<option value="${c.id}" ${o.customerId===c.id?'selected':''}>${c.name}</option>`).join('');
+  const chanOpts=Object.entries(CHANNELS).map(([k,v])=>`<option value="${k}" ${o.channel===k?'selected':''}>${v.label}</option>`).join('');
+  const pagoOpts=Object.entries(PAGO).map(([k,v])=>`<option value="${k}" ${(o.pago||'sinpagar')===k?'selected':''}>${v.label}</option>`).join('');
+  const itemsHTML=(o.items||[{cid:'mystery',qty:1,price:4500,mystery:true}]).map(i=>`
+    <div class="oi-row" style="display:grid;grid-template-columns:1fr 65px 105px auto;gap:6px;margin-bottom:6px;align-items:center">
+      <select class="fs" name="ic"><option value="mystery" ${i.mystery?'selected':''}>🎁 Mystery Box</option>${state.characters.map(c=>`<option value="${c.id}" ${i.cid===c.id&&!i.mystery?'selected':''}>${c.emoji} ${c.name}</option>`).join('')}</select>
+      <input class="fi" type="number" name="iq" value="${i.qty||1}" min="1">
+      <input class="fi" type="number" name="ip" value="${i.price||4500}" min="0" placeholder="Precio">
+      <button class="btn-ico" onclick="removeItem(this)" style="color:var(--danger)">✕</button>
+    </div>`).join('');
+  return `
+    <div class="fr">
+      <div class="fg"><label class="fl">Canal</label><select class="fs" id="oc">${chanOpts}</select></div>
+      <div class="fg"><label class="fl">Fecha</label><input class="fi" type="date" id="od" value="${o.date||today()}"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Adoptante</label><select class="fs" id="ocu" onchange="toggleNewCust(this.value)"><option value="">— Sin registrar —</option>${custOpts}<option value="new">➕ Nuevo adoptante…</option></select></div>
+      <div class="fg"><label class="fl">Estado de cobro</label><select class="fs" id="opago">${pagoOpts}</select></div>
+    </div>
     <div id="new-cust-form" style="display:none"><div class="fr"><div class="fg"><label class="fl">Nombre</label><input class="fi" type="text" id="ocn"></div><div class="fg"><label class="fl">Email</label><input class="fi" type="email" id="oce"></div></div></div>
     <div class="divider"></div>
     <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Items</div>
-    <div id="order-items">
-      <div class="oi-row" style="display:grid;grid-template-columns:1fr 65px 105px auto;gap:6px;margin-bottom:6px;align-items:center">
-        <select class="fs" name="ic"><option value="mystery">🎁 Mystery Box</option>${charOpts}</select>
-        <input class="fi" type="number" name="iq" value="1" min="1">
-        <input class="fi" type="number" name="ip" value="4500" min="0" placeholder="Precio">
-        <button class="btn-ico" onclick="removeItem(this)" style="color:var(--danger)">✕</button>
-      </div>
-    </div>
+    <div id="order-items">${itemsHTML}</div>
     <button class="btn btn-s btn-sm" onclick="addItem()" style="margin-bottom:12px">＋ Item</button>
-    <div class="fg"><label class="fl">Notas</label><textarea class="fta" id="on"></textarea></div>
+    <div class="fg"><label class="fl">Notas</label><textarea class="fta" id="on">${o.notes||''}</textarea></div>`;
+}
+
+function openNewOrder() {
+  openModal('🛒 Nuevo Pedido', orderFormHTML() + `
     <div class="mf"><button class="btn btn-s" onclick="closeModal()">Cancelar</button><button class="btn btn-p" onclick="saveOrder()">Registrar Adopción 💚</button></div>`);
+}
+
+function openEditOrder(id) {
+  const o=state.orders.find(o=>o.id===id); if(!o) return;
+  openModal('✏️ Editar Pedido', orderFormHTML(o) + `
+    <div class="mf"><button class="btn btn-s" onclick="closeModal()">Cancelar</button><button class="btn btn-p" onclick="saveOrder('${id}')">Guardar cambios</button></div>`);
 }
 
 function toggleNewCust(v){document.getElementById('new-cust-form').style.display=v==='new'?'block':'none';}
 function addItem(){const charOpts=state.characters.map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join('');const row=document.createElement('div');row.className='oi-row';row.style.cssText='display:grid;grid-template-columns:1fr 65px 105px auto;gap:6px;margin-bottom:6px;align-items:center';row.innerHTML=`<select class="fs" name="ic"><option value="mystery">🎁 Mystery Box</option>${charOpts}</select><input class="fi" type="number" name="iq" value="1" min="1"><input class="fi" type="number" name="ip" value="4500" min="0"><button class="btn-ico" onclick="removeItem(this)" style="color:var(--danger)">✕</button>`;document.getElementById('order-items').appendChild(row);}
 function removeItem(btn){const rows=document.querySelectorAll('.oi-row');if(rows.length>1)btn.closest('.oi-row').remove();}
 
-function saveOrder() {
-  const channel=document.getElementById('oc').value,date=document.getElementById('od').value,custSel=document.getElementById('ocu').value,notes=document.getElementById('on').value;
-  let customerId=null,customerName='';
-  if(custSel==='new'){const name=(document.getElementById('ocn')?.value||'').trim();const email=document.getElementById('oce')?.value||'';if(name){const nc={id:uid(),name,email,phone:'',city:'',createdAt:today(),notes:''};state.customers.push(nc);customerId=nc.id;customerName=name;}}
-  else if(custSel){const c=state.customers.find(c=>c.id===custSel);if(c){customerId=c.id;customerName=c.name;}}
-  else customerName='Cliente sin registrar';
-  const rows=document.querySelectorAll('.oi-row'),items=[];let total=0;
-  rows.forEach(r=>{const cid=r.querySelector('[name=ic]').value,qty=+r.querySelector('[name=iq]').value||1,price=+r.querySelector('[name=ip]').value||0;items.push({cid,qty,price,mystery:cid==='mystery'});total+=qty*price;if(cid!=='mystery'&&state.inventory[cid])state.inventory[cid].stock=Math.max(0,state.inventory[cid].stock-qty);});
-  state.orders.push({id:uid(),date,channel,customerId,customerName,items,total,status:'pendiente',notes});
-  // Sync to Google Sheets if configured
-  syncOrderToSheet({date,customerName,channel:CHANNELS[channel]?.label||channel,items:items.map(i=>i.mystery?`Mystery x${i.qty}`:`${getC(i.cid)?.name||i.cid} x${i.qty}`).join('; '),total,status:'Pendiente',notes});
-  save();closeModal();toast(`✅ Adopción registrada: ${ars(total)}`);renderOrders();
+function saveOrder(editId) {
+  const channel=document.getElementById('oc').value;
+  const date=document.getElementById('od').value;
+  const custSel=document.getElementById('ocu').value;
+  const pago=document.getElementById('opago').value;
+  const notes=document.getElementById('on').value;
+
+  let customerId=null, customerName='';
+  if(custSel==='new'){
+    const name=(document.getElementById('ocn')?.value||'').trim();
+    const email=document.getElementById('oce')?.value||'';
+    if(name){const nc={id:uid(),name,email,phone:'',city:'',createdAt:today(),notes:''};state.customers.push(nc);customerId=nc.id;customerName=name;}
+  } else if(custSel){
+    const c=state.customers.find(c=>c.id===custSel);
+    if(c){customerId=c.id;customerName=c.name;}
+  } else customerName='Cliente sin registrar';
+
+  const rows=document.querySelectorAll('.oi-row'), items=[];
+  let total=0;
+  rows.forEach(r=>{
+    const cid=r.querySelector('[name=ic]').value;
+    const qty=+r.querySelector('[name=iq]').value||1;
+    const price=+r.querySelector('[name=ip]').value||0;
+    items.push({cid,qty,price,mystery:cid==='mystery'});
+    total+=qty*price;
+  });
+
+  if(editId){
+    // Editar pedido existente (restaurar stock del original primero)
+    const old=state.orders.find(o=>o.id===editId);
+    if(old){
+      old.items.forEach(i=>{if(!i.mystery&&state.inventory[i.cid])state.inventory[i.cid].stock+=i.qty;});
+      items.forEach(i=>{if(!i.mystery&&state.inventory[i.cid])state.inventory[i.cid].stock=Math.max(0,state.inventory[i.cid].stock-i.qty);});
+      Object.assign(old,{date,channel,customerId,customerName,items,total,pago,notes});
+    }
+    save();closeModal();toast('✅ Pedido actualizado');
+  } else {
+    // Descontar stock
+    items.forEach(i=>{if(!i.mystery&&state.inventory[i.cid])state.inventory[i.cid].stock=Math.max(0,state.inventory[i.cid].stock-i.qty);});
+    const newOrder={id:uid(),date,channel,customerId,customerName,items,total,status:'pendiente',pago,notes};
+    state.orders.push(newOrder);
+    syncOrderToSheet({date,customerName,channel:CHANNELS[channel]?.label||channel,items:items.map(i=>i.mystery?`Mystery x${i.qty}`:`${getC(i.cid)?.name||i.cid} x${i.qty}`).join('; '),total,status:'Pendiente',pago:PAGO[pago]?.label||pago,notes});
+    toast(`✅ Adopción registrada: ${ars(total)}`);
+  }
+  save();closeModal();renderOrders();
 }
 
 async function syncOrderToSheet(data) {
@@ -1136,25 +1309,40 @@ function parseDateES(str){if(!str)return today();const p=str.split('/');if(p.len
 // REPORTS
 // ═══════════════════════════════════════════════════
 
+let reportsMonth = 'all';
+
 function renderReports() {
+  const filtOrders = reportsMonth==='all' ? state.orders : state.orders.filter(o=>o.date&&o.date.startsWith(reportsMonth));
+  const filtGastos = reportsMonth==='all' ? state.gastos : state.gastos.filter(g=>g.fecha&&g.fecha.startsWith(reportsMonth));
+
   const charRev={},charCost={};
   state.characters.forEach(c=>{charRev[c.id]=0;charCost[c.id]=0;});
-  state.orders.forEach(o=>o.items.forEach(i=>{if(!i.mystery)charRev[i.cid]=(charRev[i.cid]||0)+i.qty*i.price;}));
+  // Ingresos = solo pedidos cobrados
+  filtOrders.filter(o=>o.pago==='pagado').forEach(o=>o.items.forEach(i=>{if(!i.mystery)charRev[i.cid]=(charRev[i.cid]||0)+i.qty*i.price;}));
   state.productions.forEach(p=>{charCost[p.cid]=(charCost[p.cid]||0)+p.total;});
   const chanRev={};Object.keys(CHANNELS).forEach(k=>chanRev[k]=0);
-  state.orders.forEach(o=>{chanRev[o.channel]=(chanRev[o.channel]||0)+o.total;});
+  filtOrders.filter(o=>o.pago==='pagado').forEach(o=>{chanRev[o.channel]=(chanRev[o.channel]||0)+o.total;});
   const months=[],monthArr=[];
   for(let i=5;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;months.push(d.toLocaleDateString('es-AR',{month:'short',year:'2-digit'}));monthArr.push(monthRev(k));}
-  const totalRev=state.orders.reduce((s,o)=>s+o.total,0);
-  const totalCost=state.gastos.reduce((s,g)=>s+g.monto,0);
+  const totalRev=filtOrders.filter(o=>o.pago==='pagado').reduce((s,o)=>s+o.total,0);
+  const pendingRev=filtOrders.filter(o=>o.pago!=='pagado'&&o.status!=='cancelado').reduce((s,o)=>s+o.total,0);
+  const totalCost=filtGastos.reduce((s,g)=>s+g.monto,0);
   const profit=totalRev-totalCost;
   const margin=totalRev?((profit/totalRev)*100).toFixed(1):0;
-  const profitRows=[...state.characters].map(c=>{const rev=charRev[c.id]||0,cost=charCost[c.id]||0,pf=rev-cost,mg=rev?((pf/rev)*100).toFixed(0):0,units=state.orders.reduce((s,o)=>s+o.items.filter(i=>i.cid===c.id).reduce((ss,i)=>ss+i.qty,0),0);return{c,rev,cost,pf,mg,units};}).sort((a,b)=>b.rev-a.rev);
+  const profitRows=[...state.characters].map(c=>{const rev=charRev[c.id]||0,cost=charCost[c.id]||0,pf=rev-cost,mg=rev?((pf/rev)*100).toFixed(0):0,units=filtOrders.reduce((s,o)=>s+o.items.filter(i=>i.cid===c.id).reduce((ss,i)=>ss+i.qty,0),0);return{c,rev,cost,pf,mg,units};}).sort((a,b)=>b.rev-a.rev);
+  const availMonths=availableMonths();
 
   document.getElementById('content').innerHTML=`
-    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
-      <div class="stat-card"><div class="stat-icon si-green">💰</div><div><div class="stat-value">${ars(totalRev)}</div><div class="stat-label">Ingresos totales</div></div></div>
-      <div class="stat-card"><div class="stat-icon si-red">💸</div><div><div class="stat-value">${ars(totalCost)}</div><div class="stat-label">Gastos totales</div></div></div>
+    <!-- Filtro mes reportes -->
+    <div class="flex aic g2" style="margin-bottom:16px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:700;color:var(--text-muted)">Período:</span>
+      <button class="f-btn ${reportsMonth==='all'?'active':''}" onclick="reportsMonth='all';renderReports()">Todo</button>
+      ${availMonths.slice(0,6).map(m=>`<button class="f-btn ${reportsMonth===m?'active':''}" onclick="reportsMonth='${m}';renderReports()">${ymLabel(m)}</button>`).join('')}
+    </div>
+    <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+      <div class="stat-card"><div class="stat-icon si-green">💰</div><div><div class="stat-value">${ars(totalRev)}</div><div class="stat-label">Ingresos cobrados</div></div></div>
+      ${pendingRev>0?`<div class="stat-card"><div class="stat-icon si-yellow">⏳</div><div><div class="stat-value">${ars(pendingRev)}</div><div class="stat-label">Por cobrar</div></div></div>`:''}
+      <div class="stat-card"><div class="stat-icon si-red">💸</div><div><div class="stat-value">${ars(totalCost)}</div><div class="stat-label">Gastos</div></div></div>
       <div class="stat-card"><div class="stat-icon si-yellow">📈</div><div><div class="stat-value">${ars(profit)}</div><div class="stat-label">Ganancia neta</div></div></div>
       <div class="stat-card"><div class="stat-icon si-terra">%</div><div><div class="stat-value">${margin}%</div><div class="stat-label">Margen general</div></div></div>
     </div>
