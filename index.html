@@ -485,14 +485,15 @@ let gastosSearch = '';
 
 async function loadState() {
   try {
-    // Cargar datos principales
+    console.log('🔄 Cargando desde Firebase...');
     const snap = await window._fbGetDoc(window._fbDoc(window._db, 'erp', 'state'));
+    console.log('📦 Documento existe:', snap.exists());
     if (snap.exists()) {
       const data = snap.data();
-      // Validación básica
+      console.log('📊 Orders en Firebase:', data.orders?.length, '| Characters:', data.characters?.length);
       if (data && (Array.isArray(data.orders) || Array.isArray(data.characters))) {
         Object.assign(state, data);
-        // Migrar esquema antiguo: status 'pagado' → entregado + pago campo separado
+        console.log('✅ State cargado. Orders finales:', state.orders.length);
         if (state.orders) {
           state.orders.forEach(o => {
             if (o.status === 'pagado') { o.status = 'entregado'; o.pago = 'pagado'; }
@@ -500,13 +501,26 @@ async function loadState() {
           });
         }
       } else {
+        console.warn('⚠️ Formato inesperado, usando seedData');
         seedData();
       }
     } else {
-      // Primera vez: cargar datos de ejemplo y guardar en Firestore
+      console.log('📭 No existe documento, creando datos iniciales');
       seedData();
       await _saveToFirestore();
     }
+
+    try {
+      const photoSnap = await window._fbGetDoc(window._fbDoc(window._db, 'erp', 'photos'));
+      if (photoSnap.exists()) photos = photoSnap.data() || {};
+    } catch(e) { photos = {}; }
+
+  } catch(e) {
+    console.error('❌ Error cargando datos:', e);
+    toast('❌ Error al cargar datos. Verificá tu conexión.');
+    seedData();
+  }
+}
 
     // Cargar fotos (documento separado por tamaño)
     try {
