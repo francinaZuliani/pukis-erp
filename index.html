@@ -1,0 +1,2224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pukis ERP</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --sb:#564030;--sb-hover:rgba(255,255,255,0.06);--sb-active:rgba(115,172,83,0.18);
+  --primary:#73ac53;--primary-dark:#5d9040;
+  --secondary:#8d7455;--tertiary:#D19F86;--details:#E3BD8A;
+  --bg:#efe0d0;--card:#FEFAEE;
+  --text:#3a2a1a;--text-muted:#8d7455;
+  --border:#d9c4aa;--border-light:#e8d8c5;
+  --success:#73ac53;--warning:#E3BD8A;--danger:#c0392b;
+  --contrast:#564030;
+  --r:12px;--shadow:0 2px 8px rgba(86,64,48,0.1);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden}
+
+/* SIDEBAR */
+#sidebar{width:240px;background:var(--sb);height:100vh;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.sb-logo{padding:22px 18px;display:flex;align-items:center;gap:11px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.sb-logo-icon{font-size:26px}
+.sb-logo-text{color:#fff;font-size:19px;font-weight:700}
+.sb-logo-sub{color:var(--primary);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase}
+.sb-nav{padding:12px 0;flex:1}
+.sb-section{padding:10px 16px 3px;font-size:10px;font-weight:700;color:rgba(255,255,255,0.25);text-transform:uppercase;letter-spacing:1.5px;margin-top:6px}
+.nav-item{display:flex;align-items:center;gap:11px;padding:9px 18px;color:rgba(255,255,255,0.62);text-decoration:none;font-size:13px;font-weight:500;border-left:3px solid transparent;transition:all 0.15s;cursor:pointer}
+.nav-item:hover{background:var(--sb-hover);color:#fff}
+.nav-item.active{background:var(--sb-active);color:var(--primary);border-left-color:var(--primary)}
+.nav-icon{font-size:16px;width:19px;text-align:center}
+.sb-bottom{padding:12px 16px;border-top:1px solid rgba(255,255,255,0.07);font-size:11px;color:rgba(255,255,255,0.2);text-align:center}
+
+/* MAIN */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#topbar{height:60px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 26px;flex-shrink:0;box-shadow:0 1px 4px rgba(86,64,48,0.07)}
+#topbar-title{font-size:17px;font-weight:700;color:var(--contrast)}
+#topbar-actions{display:flex;gap:9px;align-items:center}
+#content{flex:1;overflow-y:auto;padding:22px 26px}
+
+/* CARDS */
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);border:1px solid var(--border)}
+.card-header{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:14px;font-weight:700;color:var(--contrast)}
+.card-body{padding:18px 20px}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:13px;margin-bottom:18px}
+.stat-card{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);border:1px solid var(--border);display:flex;align-items:flex-start;gap:11px;overflow:hidden;min-width:0}
+.stat-icon{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.si-green{background:rgba(115,172,83,0.12)} .si-yellow{background:rgba(227,189,138,0.2)}
+.si-brown{background:rgba(141,116,85,0.12)} .si-terra{background:rgba(209,159,134,0.18)} .si-red{background:rgba(192,57,43,0.1)}
+.stat-card>div:last-child{flex:1; min-width:min-content}
+.stat-value{font-size:clamp(16px, 2.5vw, 21px);font-weight:700;line-height:1.15;color:var(--contrast);white-space:nowrap;letter-spacing:-0.5px}
+.stat-label{font-size:11px;color:var(--text-muted);margin-top:4px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-change{font-size:11px;margin-top:4px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.up{color:var(--success)} .dn{color:var(--danger)}
+
+/* GRIDS */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;margin-bottom:16px}
+
+/* TABLES */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{background:#f5ede3;padding:9px 13px;text-align:left;font-size:11px;font-weight:700;color:var(--secondary);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:10px 13px;font-size:13px;border-bottom:1px solid var(--border-light);color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#faf4ec}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:100px;font-size:11px;font-weight:700;white-space:nowrap}
+.bg{background:#d9f0c8;color:#2d6a15} .by{background:#fef3d4;color:#7a5a00}
+.bb{background:#dceeff;color:#1a4a7a} .br{background:#fde0dc;color:#8b1a0a}
+.bgr{background:#f0e8df;color:var(--secondary)} .bp{background:#f5e0f5;color:#6a1f6a}
+.bo{background:#ffe8d0;color:#7a3a00} .bter{background:#f5e4da;color:#6a3520}
+
+.ch-tn{background:#e8eeff;color:#2a3090;font-weight:700;font-size:11px;padding:3px 9px;border-radius:100px;display:inline-flex}
+.ch-ml{background:#fff3d0;color:#7a4500;font-weight:700;font-size:11px;padding:3px 9px;border-radius:100px;display:inline-flex}
+.ch-feria{background:#f5e0f5;color:#6a1f6a;font-weight:700;font-size:11px;padding:3px 9px;border-radius:100px;display:inline-flex}
+.ch-ig{background:#ffe0e0;color:#8b1a1a;font-weight:700;font-size:11px;padding:3px 9px;border-radius:100px;display:inline-flex}
+.ch-web{background:#d9f0c8;color:#2d6a15;font-weight:700;font-size:11px;padding:3px 9px;border-radius:100px;display:inline-flex}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:8px 15px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all 0.15s;font-family:inherit}
+.btn-p{background:var(--primary);color:#fff} .btn-p:hover{background:var(--primary-dark)}
+.btn-s{background:var(--bg);color:var(--text);border:1px solid var(--border)} .btn-s:hover{background:var(--border)}
+.btn-d{background:#fde0dc;color:var(--danger)} .btn-d:hover{background:#f5b8b0}
+.btn-sm{padding:5px 11px;font-size:12px;border-radius:7px}
+.btn-ico{padding:5px 7px;border-radius:6px;background:transparent;border:1px solid var(--border);cursor:pointer;font-size:13px;transition:all 0.15s;font-family:inherit}
+.btn-ico:hover{background:var(--bg)}
+
+/* FORMS */
+.fg{margin-bottom:13px}
+.fl{display:block;font-size:12px;font-weight:700;color:var(--contrast);margin-bottom:5px;letter-spacing:0.2px}
+.fi,.fs,.fta{width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);background:var(--card);transition:border-color 0.15s;font-family:inherit}
+.fi:focus,.fs:focus,.fta:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(115,172,83,0.14)}
+.fta{resize:vertical;min-height:68px}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fh{font-size:11px;color:var(--text-muted);margin-top:3px}
+
+/* MODAL */
+#mo{position:fixed;inset:0;background:rgba(86,64,48,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:18px}
+#mo.hidden{display:none}
+#md{background:var(--card);border-radius:16px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(86,64,48,0.25)}
+.mh{padding:17px 22px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--card);z-index:1;border-radius:16px 16px 0 0}
+.mt-{font-size:16px;font-weight:700;color:var(--contrast)}
+.mc{background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);padding:4px 8px;border-radius:6px}
+.mc:hover{background:var(--bg)}
+.mb{padding:18px 22px}
+.mf{padding:13px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+
+/* PUKI CARDS */
+.puki-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:13px}
+.puki-card{background:var(--card);border-radius:var(--r);border:2px solid var(--border);overflow:hidden;transition:transform 0.15s,box-shadow 0.15s}
+.puki-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(86,64,48,0.13)}
+.puki-hd{padding:20px 16px 14px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.puki-emoji{font-size:48px;line-height:1}
+.puki-photo{width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--border)}
+.puki-name{font-size:16px;font-weight:700;color:var(--contrast)}
+.puki-type{font-size:11px;color:var(--text-muted)}
+.puki-ability{font-size:11px;color:var(--secondary);font-style:italic;text-align:center;margin-top:2px}
+.puki-bd{padding:13px 15px;border-top:1px solid var(--border-light)}
+.tr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.tr-name{font-size:11px;color:var(--text-muted);font-weight:600}
+.puki-sb{display:flex;align-items:center;justify-content:space-between;padding:8px 13px;background:var(--bg);font-size:12px}
+
+/* PHOTO UPLOAD */
+.photo-upload-area{border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all 0.15s;background:var(--bg)}
+.photo-upload-area:hover{border-color:var(--primary);background:#f5f0e8}
+.photo-preview{width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--primary);margin:0 auto 8px;display:block}
+
+/* RANGE SLIDER */
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--primary);cursor:pointer}
+
+/* ALERTS */
+.alert{padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px;display:flex;align-items:flex-start;gap:8px}
+.a-warn{background:#fef8e8;border:1px solid var(--details);color:#5a3800}
+.a-ok{background:#edfae6;border:1px solid #a3d98a;color:#1a4d08}
+.a-info{background:#f0eae3;border:1px solid var(--tertiary);color:var(--contrast)}
+
+/* MISC */
+.progress-bar{height:5px;background:var(--border);border-radius:100px;overflow:hidden}
+.progress-fill{height:100%;border-radius:100px;background:var(--primary);transition:width 0.3s}
+.filters{display:flex;gap:7px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.f-btn{padding:5px 13px;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--card);color:var(--text-muted);transition:all 0.15s}
+.f-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.f-btn:hover:not(.active){border-color:var(--primary);color:var(--primary)}
+.search-in{padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:var(--card);color:var(--text);min-width:200px;font-family:inherit}
+.search-in:focus{outline:none;border-color:var(--primary)}
+.empty{text-align:center;padding:40px 22px;color:var(--text-muted)}
+.empty-ico{font-size:42px;margin-bottom:9px}
+.empty-t{font-size:15px;font-weight:600;margin-bottom:4px;color:var(--text)}
+.empty-s{font-size:13px}
+.divider{height:1px;background:var(--border);margin:13px 0}
+.flex{display:flex} .aic{align-items:center} .jb{justify-content:space-between} .g2{gap:8px} .g3{gap:12px}
+.chart-container{position:relative;height:240px}
+.tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+
+/* TOAST */
+#toast{position:fixed;bottom:20px;right:20px;background:var(--contrast);color:#fff;padding:10px 17px;border-radius:10px;font-size:13px;font-weight:600;z-index:2000;opacity:0;transform:translateY(7px);transition:all 0.22s;pointer-events:none;max-width:290px}
+#toast.show{opacity:1;transform:translateY(0)}
+
+/* SETTINGS PANEL */
+.setting-row{display:flex;align-items:flex-start;gap:16px;padding:16px 0;border-bottom:1px solid var(--border-light)}
+.setting-row:last-child{border-bottom:none}
+.setting-info{flex:1}
+.setting-title{font-size:14px;font-weight:700;color:var(--contrast);margin-bottom:3px}
+.setting-desc{font-size:12px;color:var(--text-muted);line-height:1.5}
+
+/* COLOR PICKER */
+input[type=color]{width:40px;height:32px;border:1.5px solid var(--border);border-radius:6px;cursor:pointer;padding:2px;background:var(--card)}
+
+/* MOBILE MENU TOGGLE */
+#menu-toggle{display:none;background:none;border:none;font-size:22px;cursor:pointer;padding:4px 8px;color:var(--contrast);border-radius:6px;transition:background 0.15s}
+#menu-toggle:hover{background:var(--border)}
+#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:95}
+#sidebar-overlay.open{display:block}
+
+/* ADVANCED FILTER PANEL */
+.filter-panel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.filter-panel-title{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px}
+.filter-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px;align-items:center}
+.filter-row:last-child{margin-bottom:0}
+.filter-label{font-size:11px;font-weight:700;color:var(--secondary);min-width:60px}
+.filter-clear{font-size:11px;color:var(--text-muted);cursor:pointer;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);margin-left:auto}
+.filter-clear:hover{background:var(--border)}
+.fi-sm{padding:5px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;color:var(--text);background:var(--card);font-family:inherit;height:30px}
+.fi-sm:focus{outline:none;border-color:var(--primary)}
+
+/* ORDER HISTORY TIMELINE */
+.history-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border-light)}
+.history-item:last-child{border-bottom:none}
+.history-dot{width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0;margin-top:5px}
+.history-ts{font-size:10px;color:var(--text-muted);font-weight:600;white-space:nowrap}
+.history-action{font-size:12px;font-weight:600;color:var(--contrast)}
+.history-detail{font-size:11px;color:var(--text-muted)}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .grid-2,.grid-3{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:768px){
+  body{height:auto;overflow:auto;flex-direction:row}
+  #sidebar{position:fixed;left:-260px;top:0;height:100vh;width:240px;z-index:100;transition:left 0.25s ease;overflow-y:auto;flex-shrink:0}
+  #sidebar.mob-open{left:0}
+  #menu-toggle{display:flex;align-items:center;justify-content:center}
+  #main{flex:1;width:100%;min-height:100vh;overflow:auto}
+  #topbar{padding:0 12px;gap:6px}
+  #topbar-title{font-size:14px}
+  #topbar-actions{gap:6px}
+  #topbar-actions #user-email{display:none}
+  #topbar-actions .btn-p{font-size:11px;padding:6px 9px}
+  #content{padding:12px 10px}
+  .stats-grid{grid-template-columns:1fr 1fr;gap:9px}
+  .grid-2,.grid-3{grid-template-columns:1fr}
+  .fr{grid-template-columns:1fr}
+  .puki-grid{grid-template-columns:repeat(auto-fill,minmax(145px,1fr))}
+  .search-in{min-width:140px}
+  .card-header{flex-wrap:wrap;gap:6px}
+  .card-body{padding:12px 14px}
+  table{min-width:560px}
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  #mo{padding:8px}
+  #md{max-height:96vh;border-radius:12px}
+  .mh,.mb,.mf{padding-left:14px;padding-right:14px}
+  .filters{gap:5px}
+  .f-btn{font-size:11px;padding:4px 9px}
+}
+@media(max-width:480px){
+  .stats-grid{grid-template-columns:1fr}
+  .stat-value{font-size:19px}
+  .stat-card{padding:11px}
+  #topbar-title{font-size:13px}
+  .f-btn{font-size:10px;padding:3px 7px}
+}
+
+/* MATERIALS TABLE */
+.mat-status-ok{color:var(--success);font-weight:700}
+.mat-status-buy{color:var(--danger);font-weight:700}
+
+/* LOGIN SCREEN */
+#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999}
+#login-screen.hidden{display:none}
+.login-box{background:var(--card);border-radius:16px;box-shadow:0 8px 32px rgba(86,64,48,0.15);border:1px solid var(--border);padding:40px 36px;width:340px;text-align:center}
+.login-logo{font-size:48px;margin-bottom:8px}
+.login-title{font-size:22px;font-weight:700;color:var(--contrast);margin-bottom:4px}
+.login-sub{font-size:12px;color:var(--text-muted);margin-bottom:28px}
+.login-box .fi{width:100%;margin-bottom:12px;padding:10px 14px;font-size:14px}
+.login-btn{width:100%;padding:11px;font-size:14px;font-weight:700;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;transition:background 0.15s}
+.login-btn:hover{background:var(--primary-dark)}
+.login-btn:disabled{opacity:0.6;cursor:not-allowed}
+#login-error{color:var(--danger);font-size:12px;margin-top:10px;min-height:18px}
+#login-loading{color:var(--text-muted);font-size:12px;margin-top:10px}
+</style>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAeJ8jqlMDlRSfwAarpn8isRYgHM__I2gs",
+    authDomain: "pukis-erp.firebaseapp.com",
+    projectId: "pukis-erp",
+    storageBucket: "pukis-erp.firebasestorage.app",
+    messagingSenderId: "117158770055",
+    appId: "1:117158770055:web:a840e229e85ae404e84f22",
+    measurementId: "G-NLZ97SGXVL"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  window._db = getFirestore(app);
+  window._auth = getAuth(app);
+
+  // Exponer funciones de Firebase al scope global
+  window._fbDoc = doc;
+  window._fbGetDoc = getDoc;
+  window._fbSetDoc = setDoc;
+  window._fbSignIn = (email, pass) => signInWithEmailAndPassword(window._auth, email, pass);
+  window._fbSignOut = () => signOut(window._auth);
+
+  // Escuchar cambios de auth
+  onAuthStateChanged(window._auth, async (user) => {
+    if (user) {
+      // Usuario autenticado: mostrar ERP
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('user-email').textContent = user.email;
+      await loadState();
+      initApp();
+    } else {
+      // No autenticado: mostrar login
+      document.getElementById('login-screen').classList.remove('hidden');
+    }
+  });
+</script>
+
+</head>
+<body>
+
+<!-- PANTALLA DE LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">🐾</div>
+    <div class="login-title">Pukis ERP</div>
+    <div class="login-sub">Ingresá para acceder al sistema</div>
+    <input class="fi" id="login-email" type="email" placeholder="Email" autocomplete="email">
+    <input class="fi" id="login-pass" type="password" placeholder="Contraseña" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar →</button>
+    <div id="login-error"></div>
+    <div id="login-loading"></div>
+  </div>
+</div>
+
+<div id="sidebar-overlay" onclick="closeMobileMenu()"></div>
+<aside id="sidebar">
+  <div class="sb-logo">
+    <span class="sb-logo-icon">🐾</span>
+    <div>
+      <div class="sb-logo-text">Pukis ERP</div>
+      <div class="sb-logo-sub">Sistema de Gestión</div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section">Principal</div>
+    <a class="nav-item active" data-mod="dashboard" href="#">
+      <span class="nav-icon">📊</span><span>Dashboard</span>
+    </a>
+    <div class="sb-section">Catálogo</div>
+    <a class="nav-item" data-mod="characters" href="#">
+      <span class="nav-icon">🧸</span><span>Personajes</span>
+    </a>
+    <a class="nav-item" data-mod="inventory" href="#">
+      <span class="nav-icon">📦</span><span>Inventario Pukis</span>
+    </a>
+    <a class="nav-item" data-mod="materials" href="#">
+      <span class="nav-icon">🎨</span><span>Materiales</span>
+    </a>
+    <div class="sb-section">Operaciones</div>
+    <a class="nav-item" data-mod="orders" href="#">
+      <span class="nav-icon">🛒</span><span>Pedidos</span>
+    </a>
+    <a class="nav-item" data-mod="customers" href="#">
+      <span class="nav-icon">🤎</span><span>Adoptantes</span>
+    </a>
+    <div class="sb-section">Finanzas</div>
+    <a class="nav-item" data-mod="gastos" href="#">
+      <span class="nav-icon">💸</span><span>Gastos</span>
+    </a>
+    <a class="nav-item" data-mod="reports" href="#">
+      <span class="nav-icon">📈</span><span>Reportes</span>
+    </a>
+    <div class="sb-section">Sistema</div>
+    <a class="nav-item" data-mod="settings" href="#">
+      <span class="nav-icon">⚙️</span><span>Configuración</span>
+    </a>
+  </nav>
+  <div class="sb-bottom">v2.0 · Pukis Friends 🌿</div>
+</aside>
+
+<div id="main">
+  <div id="topbar">
+    <button id="menu-toggle" onclick="toggleMobileMenu()" title="Menú">☰</button>
+    <div id="topbar-title">Dashboard</div>
+    <div id="topbar-actions">
+      <span id="save-indicator" style="font-size:11px;color:var(--text-muted);display:none;align-items:center;gap:4px">✓ Guardado</span>
+      <button class="btn btn-p" id="topbar-btn" onclick="topbarAction()">＋ Nuevo Pedido</button>
+      <button class="btn btn-s" onclick="forceSave()" style="font-size:12px;padding:5px 9px" title="Guardar ahora">💾</button>
+      <span id="user-email" style="font-size:11px;color:var(--text-muted);margin-left:2px"></span>
+      <button class="btn btn-s" onclick="doLogout()" style="font-size:11px;padding:5px 10px" title="Cerrar sesión">🚪</button>
+    </div>
+  </div>
+  <div id="content"></div>
+</div>
+
+<div id="mo" class="hidden">
+  <div id="md">
+    <div class="mh">
+      <div class="mt-" id="modal-title"></div>
+      <button class="mc" onclick="closeModal()">✕</button>
+    </div>
+    <div class="mb" id="modal-body"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// CONSTANTS & DEFAULTS
+// ═══════════════════════════════════════════════════
+
+const DEFAULT_CHARS = [
+  {id:'dino',    name:'Dino',  emoji:'🦕',type:'Dinosaurio',color:'#73ac53',light:'#edf7e5',traits:{ternura:3,curiosidad:4,jugabilidad:5,compania:3,valentia:4},ability:'Predice el clima con su cola',story:'Dino vivía en un jardín secreto hasta que decidió explorar el mundo.'},
+  {id:'elefante',name:'Ellie', emoji:'🐘',type:'Elefante',  color:'#9E9E9E',light:'#F5F5F5',traits:{ternura:5,curiosidad:3,jugabilidad:3,compania:5,valentia:2},ability:'Nunca olvida una promesa',story:'Ellie es la más tierna. Su abrazo dura exactamente 7 segundos, el tiempo perfecto.'},
+  {id:'chancho', name:'Rosie', emoji:'🐷',type:'Cerdito',   color:'#D19F86',light:'#faeee8',traits:{ternura:5,curiosidad:3,jugabilidad:4,compania:4,valentia:2},ability:'Sus caricias curan el mal humor',story:'Rosie llegó de un campo de fresas y todavía huele un poquito a ellas.'},
+  {id:'gato',    name:'Luna',  emoji:'🐱',type:'Gato',      color:'#8d7455',light:'#f5ede3',traits:{ternura:3,curiosidad:5,jugabilidad:4,compania:3,valentia:4},ability:'Ve cosas invisibles para los demás',story:'Luna apareció una noche de luna llena. Misteriosa, pero cuando te elige, es para siempre.'},
+  {id:'perro',   name:'Bruno', emoji:'🐶',type:'Perrito',   color:'#E3BD8A',light:'#fdf5e6',traits:{ternura:4,curiosidad:3,jugabilidad:4,compania:5,valentia:4},ability:'Sabe cuando alguien lo necesita',story:'Bruno lleva una pelotita imaginaria a todos lados y la comparte con quien lo necesite.'},
+  {id:'abeja',   name:'Zumbi', emoji:'🐝',type:'Abeja',     color:'#d4a800',light:'#fffbe0',traits:{ternura:3,curiosidad:5,jugabilidad:4,compania:3,valentia:5},ability:'Su zumbido activa la creatividad',story:'Zumbi voló desde un jardín de girasoles. Dice que el mundo tiene demasiadas flores por descubrir.'},
+  {id:'delfin',  name:'Nemo',  emoji:'🐬',type:'Delfín',    color:'#81D4FA',light:'#e6f7fe',traits:{ternura:4,curiosidad:4,jugabilidad:5,compania:4,valentia:3},ability:'Habla con las estrellas de mar',story:'Nemo llegó nadando desde el Atlántico Sur. Trae olas de alegría a todos lados.'}
+];
+
+const TRAIT_LABELS = {ternura:'Ternura',curiosidad:'Curiosidad',jugabilidad:'Jugabilidad',compania:'Compañía',valentia:'Valentía'};
+const QUIEN = {pukis:'Pukis 🐾', chonchin:'Chonchin', franchinita:'Franchinita'};
+
+const CHANNELS = {
+  tiendanube:{label:'Tienda Nube',badge:'ch-tn',short:'TN'},
+  mercadolibre:{label:'MercadoLibre',badge:'ch-ml',short:'ML'},
+  feria:{label:'Feria',badge:'ch-feria',short:'Feria'},
+  instagram:{label:'Instagram',badge:'ch-ig',short:'IG'},
+  directo:{label:'Directo',badge:'bgr',short:'Directo'}
+};
+
+const STATUS = {
+  pendiente: {label:'Pendiente',  badge:'bgr'},
+  preparando:{label:'Preparando', badge:'by'},
+  enviado:   {label:'Enviado',    badge:'bb'},
+  entregado: {label:'Entregado',  badge:'bg'},
+  cancelado: {label:'Cancelado',  badge:'br'}
+};
+
+const PAGO = {
+  sinpagar:{label:'Sin cobrar', badge:'br'},
+  señado:  {label:'Señado',     badge:'by'},
+  pagado:  {label:'Cobrado',    badge:'bg'}
+};
+
+const DEFAULT_MATERIALS = [
+  {id:'m1', desc:'Logo Tag',                  stock:'38',  plancha:'16'},
+  {id:'m2', desc:'Sticker Logo tag',          stock:'88',  plancha:'104'},
+  {id:'m3', desc:'Sticker Grande Logo',       stock:'22',  plancha:'24'},
+  {id:'m4', desc:'Sticker Grande Perritos',   stock:'6',   plancha:'3'},
+  {id:'m5', desc:'Sticker Grande Gatitos',    stock:'8',   plancha:'4'},
+  {id:'m6', desc:'Sticker Grande Delfín',     stock:'6',   plancha:'3'},
+  {id:'m7', desc:'Sticker Grande Dino',       stock:'8',   plancha:'4'},
+  {id:'m8', desc:'Sticker Grande Cerdito',    stock:'7',   plancha:'4'},
+  {id:'m9', desc:'Sticker Grande Abejita',    stock:'6',   plancha:'3'},
+  {id:'m10',desc:'Sticker Grande Elefantito', stock:'5',   plancha:'3'},
+  {id:'m11',desc:'Sticker Chiquitos Perritos',stock:'14',  plancha:'14'},
+  {id:'m12',desc:'Sticker Chiquitos Gatitos', stock:'14',  plancha:'14'},
+  {id:'m13',desc:'Sticker Chiquitos Delfín',  stock:'14',  plancha:'14'},
+  {id:'m14',desc:'Sticker Chiquitos Dino',    stock:'14',  plancha:'14'},
+  {id:'m15',desc:'Sticker Chiquitos Cerdito', stock:'14',  plancha:'14'},
+  {id:'m16',desc:'Sticker Chiquitos Abejita', stock:'14',  plancha:'14'},
+  {id:'m17',desc:'Sticker Chiquitos Elefantito',stock:'10',plancha:'12'},
+  {id:'m18',desc:'Certificado adopción',      stock:'25',  plancha:'16'},
+  {id:'m19',desc:'Álbum Colección',           stock:'8',   plancha:'9'},
+  {id:'m20',desc:'Cajas',                     stock:'',    plancha:'100'},
+  {id:'m21',desc:'Perfume',                   stock:'Ok',  plancha:''},
+  {id:'m22',desc:'Viruta',                    stock:'Comprar', plancha:'1kg'},
+  {id:'m23',desc:'Hilo de Yute',              stock:'Ok',  plancha:''}
+];
+
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+
+let state = {
+  characters: [],
+  inventory: {},
+  productions: [],
+  orders: [],
+  customers: [],
+  materials: [],
+  gastos: [],
+  settings: { gastosUrl:'', ventasUrl:'', currency:'ARS', cotizacionUSD:1000 },
+  currentModule: 'dashboard'
+};
+let photos = {};
+let charts = {};
+// Advanced order filters (persist during session)
+let orderFilters = {status:'', pago:'', channel:'', product:'', dateFrom:'', dateTo:''};
+let ordersSearchVal = '';
+// Gastos filters
+let gastosFilters = {quien:'', cat:'', moneda:'', dateFrom:'', dateTo:''};
+let gastosFilterOpen = false;
+let gastosSearch = '';
+
+async function loadState() {
+  try {
+    console.log('🔄 Cargando desde Firebase...');
+    // Cargar datos principales
+    const snap = await window._fbGetDoc(window._fbDoc(window._db, 'erp', 'state'));
+    console.log('📦 Documento existe:', snap.exists());
+    if (snap.exists()) {
+      const data = snap.data();
+      console.log('📊 Orders en Firestore:', data.orders?.length, '| Gastos:', data.gastos?.length, '| _realDataImported:', data._realDataImported);
+      // Validación básica
+      if (data && (Array.isArray(data.orders) || Array.isArray(data.characters))) {
+        Object.assign(state, data);
+        console.log('✅ State cargado — orders:', state.orders?.length, '| gastos:', state.gastos?.length);
+        // Migrar esquema antiguo: status 'pagado' → entregado + pago campo separado
+        if (state.orders) {
+          state.orders.forEach(o => {
+            if (o.status === 'pagado') { o.status = 'entregado'; o.pago = 'pagado'; }
+            if (!o.pago) o.pago = (o.status === 'entregado') ? 'pagado' : 'sinpagar';
+          });
+        }
+      } else {
+        console.warn('⚠️ Datos inválidos en Firestore — cargando seedData. data:', JSON.stringify(data).slice(0,200));
+        seedData();
+      }
+    } else {
+      console.warn('⚠️ No existe documento en Firestore — cargando seedData');
+      // Primera vez: cargar datos de ejemplo y guardar en Firestore
+      seedData();
+      await _saveToFirestore();
+    }
+
+    // Cargar fotos (documento separado por tamaño)
+    try {
+      const photoSnap = await window._fbGetDoc(window._fbDoc(window._db, 'erp', 'photos'));
+      if (photoSnap.exists()) photos = photoSnap.data() || {};
+    } catch(e) { photos = {}; }
+
+  } catch(e) {
+    console.error('Error cargando datos:', e);
+    toast('❌ Error al cargar datos. Verificá tu conexión.');
+    seedData();
+  }
+}
+
+async function _saveToFirestore() {
+  // Copia limpia del state sin funciones ni referencias circulares
+  const stateClean = JSON.parse(JSON.stringify(state));
+  await window._fbSetDoc(window._fbDoc(window._db, 'erp', 'state'), stateClean);
+  // Fotos separadas
+  const photosClean = JSON.parse(JSON.stringify(photos));
+  await window._fbSetDoc(window._fbDoc(window._db, 'erp', 'photos'), photosClean);
+}
+
+let _saveTimeout = null;
+function save() {
+  clearTimeout(_saveTimeout);
+  _saveTimeout = setTimeout(async () => {
+    try {
+      await _saveToFirestore();
+      const ind = document.getElementById('save-indicator');
+      if (ind) {
+        const now = new Date();
+        const h = String(now.getHours()).padStart(2,'0');
+        const m = String(now.getMinutes()).padStart(2,'0');
+        ind.textContent = `✓ Guardado ${h}:${m}`;
+        ind.style.display = 'flex';
+      }
+    } catch(e) {
+      toast('❌ Error al guardar: ' + e.message);
+      console.error('Error guardando:', e);
+    }
+  }, 600);
+}
+
+async function forceSave() {
+  const btn = event?.currentTarget;
+  if(btn){btn.textContent='💾...';btn.disabled=true;}
+  try {
+    await _saveToFirestore();
+    const ind = document.getElementById('save-indicator');
+    if(ind){const now=new Date();ind.textContent=`✓ Guardado ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;ind.style.display='flex';}
+    toast('✅ Datos guardados manualmente');
+  } catch(e) { toast('❌ Error al guardar: '+e.message); }
+  finally { if(btn){btn.textContent='💾';btn.disabled=false;} }
+}
+
+function seedData() {
+  state.characters = JSON.parse(JSON.stringify(DEFAULT_CHARS));
+  state.inventory = {
+    dino:{stock:8,minStock:5,price:4500,cost:1200}, elefante:{stock:12,minStock:5,price:4500,cost:1200},
+    chancho:{stock:6,minStock:5,price:4500,cost:1100}, gato:{stock:15,minStock:5,price:4500,cost:1150},
+    perro:{stock:3,minStock:5,price:4500,cost:1200}, abeja:{stock:10,minStock:5,price:5000,cost:1350},
+    delfin:{stock:7,minStock:5,price:4500,cost:1100}
+  };
+  state.materials = JSON.parse(JSON.stringify(DEFAULT_MATERIALS));
+  const cids = [];
+  state.customers = [
+    {id:uid(),name:'Valentina López', email:'valen@gmail.com', phone:'+54 11 4523-7891',city:'Buenos Aires',createdAt:'2025-09-10',notes:''},
+    {id:uid(),name:'Sofía Martínez',  email:'sofi@hotmail.com',phone:'+54 11 3314-6620',city:'Córdoba',     createdAt:'2025-10-02',notes:''},
+    {id:uid(),name:'Lucía Fernández', email:'luci@gmail.com',  phone:'+54 11 5567-3412',city:'Rosario',     createdAt:'2025-10-15',notes:''},
+    {id:uid(),name:'Martina García',  email:'marti@gmail.com', phone:'+54 11 4412-8830',city:'Buenos Aires',createdAt:'2025-11-01',notes:''}
+  ];
+  state.customers.forEach(c=>cids.push(c.id));
+  state.orders = [
+    {id:uid(),date:'2025-11-20',channel:'tiendanube',  customerId:cids[0],customerName:'Valentina López',items:[{cid:'dino',   qty:1,price:4500,mystery:false}],total:4500,status:'entregado',notes:''},
+    {id:uid(),date:'2025-11-22',channel:'mercadolibre',customerId:cids[1],customerName:'Sofía Martínez', items:[{cid:'abeja',  qty:1,price:5000,mystery:false},{cid:'gato',qty:1,price:4500,mystery:false}],total:9500,status:'entregado',notes:''},
+    {id:uid(),date:'2025-12-01',channel:'feria',       customerId:cids[2],customerName:'Lucía Fernández',items:[{cid:'mystery',qty:1,price:4500,mystery:true}], total:4500,status:'entregado',notes:'Feria Palermo'},
+    {id:uid(),date:'2025-12-05',channel:'instagram',   customerId:cids[3],customerName:'Martina García', items:[{cid:'elefante',qty:2,price:4500,mystery:false}],total:9000,status:'enviado',  notes:''},
+    {id:uid(),date:'2026-01-10',channel:'tiendanube',  customerId:cids[0],customerName:'Valentina López',items:[{cid:'perro',  qty:1,price:4500,mystery:false}],total:4500,status:'preparando',notes:''},
+    {id:uid(),date:'2026-01-15',channel:'mercadolibre',customerId:null,   customerName:'Comprador ML',   items:[{cid:'chancho',qty:1,price:4500,mystery:false}],total:4500,status:'pagado',    notes:''},
+    {id:uid(),date:'2026-02-03',channel:'tiendanube',  customerId:cids[2],customerName:'Lucía Fernández',items:[{cid:'mystery',qty:2,price:4500,mystery:true}], total:9000,status:'pendiente', notes:'2 mystery boxes'},
+    {id:uid(),date:'2026-04-20',channel:'feria',       customerId:null,   customerName:'Cliente feria',  items:[{cid:'delfin', qty:1,price:4500,mystery:false}],total:4500,status:'entregado', notes:'Expo Makers'}
+  ];
+  state.productions = [
+    {id:uid(),cid:'dino',    qty:10,grams:120,hours:14,date:'2025-10-05',matCost:800, total:12000,notes:'Primera tanda'},
+    {id:uid(),cid:'elefante',qty:15,grams:180,hours:21,date:'2025-10-12',matCost:1100,total:18000,notes:''},
+    {id:uid(),cid:'abeja',   qty:12,grams:145,hours:16,date:'2025-11-03',matCost:950, total:16200,notes:''},
+    {id:uid(),cid:'gato',    qty:20,grams:240,hours:28,date:'2025-11-18',matCost:1400,total:23000,notes:''},
+    {id:uid(),cid:'perro',   qty:8, grams:96, hours:11,date:'2025-12-10',matCost:650, total:9600, notes:''},
+    {id:uid(),cid:'delfin',  qty:10,grams:115,hours:13,date:'2026-01-20',matCost:780, total:11000,notes:''},
+    {id:uid(),cid:'chancho', qty:12,grams:132,hours:15,date:'2026-02-14',matCost:880, total:13200,notes:''}
+  ];
+  state.gastos = [
+    {id:uid(),fecha:'2025-11-01',desc:'Filamento PLA 1kg',monto:8500,cat:'Producción'},
+    {id:uid(),fecha:'2025-11-05',desc:'Cajas kraft x50',  monto:4200,cat:'Packaging'},
+    {id:uid(),fecha:'2025-12-01',desc:'Stickers plancha', monto:3100,cat:'Packaging'},
+    {id:uid(),fecha:'2026-01-10',desc:'Filamento PLA 1kg',monto:9000,cat:'Producción'},
+    {id:uid(),fecha:'2026-02-15',desc:'Perfume spray',    monto:2300,cat:'Packaging'},
+    {id:uid(),fecha:'2026-03-01',desc:'Electricidad',     monto:5600,cat:'Servicios'},
+    {id:uid(),fecha:'2026-04-01',desc:'Filamento PLA 2kg',monto:17000,cat:'Producción'}
+  ];
+  save();
+}
+
+// ═══════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════
+
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function ars(n) { return '$'+Number(n||0).toLocaleString('es-AR'); }
+function fdate(d) { if(!d)return'—'; const p=d.split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d; }
+function today() { return new Date().toISOString().split('T')[0]; }
+function getC(id) { return state.characters.find(c=>c.id===id); }
+function getI(id) { return state.inventory[id]||{stock:0,minStock:5,price:4500,cost:1200}; }
+function totalStock() { return Object.values(state.inventory).reduce((s,v)=>s+(v.stock||0),0); }
+function ym(offset=0) { const d=new Date(); d.setMonth(d.getMonth()+offset); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+// Solo cuenta ingresos de pedidos COBRADOS (pago = 'pagado')
+function monthRev(m) { return state.orders.filter(o=>o.date&&o.date.startsWith(m)&&o.pago==='pagado').reduce((s,o)=>s+(o.total||0),0); }
+function monthRevAll(m) { return state.orders.filter(o=>o.date&&o.date.startsWith(m)).reduce((s,o)=>s+(o.total||0),0); } // incluye no cobrados
+function monthCount(m) { return state.orders.filter(o=>o.date&&o.date.startsWith(m)).length; }
+// monthGastos: solo gastos reales del mes (excluye cuotas futuras no vencidas)
+function monthGastos(m) {
+  const t=today();
+  return state.gastos.filter(g=>{
+    if(!g.fecha||!g.fecha.startsWith(m)) return false;
+    if(g._futura&&g.fechaVence&&g.fechaVence>t) return false; // cuota futura no vencida
+    return true;
+  }).reduce((s,g)=>s+(g.monto||0),0);
+}
+// Convierte un gasto a ARS según cotización
+function gastoARS(g) { if((g.moneda||'ARS')==='USD') return (g.monto||0)*(g.cotizacion||state.settings.cotizacionUSD||1); return g.monto||0; }
+// Total invertido en ARS = todos los gastos (incluyendo cuotas futuras y USD convertidos)
+function totalInvertido() { return state.gastos.reduce((s,g)=>s+gastoARS(g),0); }
+// Total cobrado histórico
+function totalCobrado() { return state.orders.filter(o=>o.pago==='pagado').reduce((s,o)=>s+(o.total||0),0); }
+// % de inversión recuperada
+function recoveryPct() { const inv=totalInvertido(); return inv?Math.min(999,Math.round((totalCobrado()/inv)*100)):0; }
+// Gastos por persona (en ARS) — descuenta lo ya reembolsado
+function gastosPorQuien(quien) { return state.gastos.filter(g=>g.quien===quien).reduce((s,g)=>s+Math.max(0,gastoARS(g)-(g.montoReembolso||0)),0); }
+// Total USD
+function totalGastosUSD() { return state.gastos.filter(g=>g.moneda==='USD').reduce((s,g)=>s+(g.monto||0),0); }
+// Utilidad: formatea mes yyyy-mm → "Mayo 2026"
+function ymLabel(m) { const [y,mo]=m.split('-'); return new Date(+y,+mo-1,1).toLocaleDateString('es-AR',{month:'long',year:'numeric'}); }
+// Lista de meses con datos (pedidos o gastos) para el filtro
+function availableMonths() {
+  const ms=new Set();
+  state.orders.forEach(o=>{ if(o.date) ms.add(o.date.slice(0,7)); });
+  state.gastos.forEach(g=>{ if(g.fecha) ms.add(g.fecha.slice(0,7)); });
+  ms.add(ym(0)); ms.add(ym(-1)); ms.add(ym(-2));
+  return [...ms].sort().reverse();
+}
+
+// ─── AUTO-COBRO: marca como Cobrado los pedidos cuya fechaPago ya llegó ───
+function checkAutoPayments() {
+  const t=today(); let changed=false;
+  state.orders.forEach(o=>{
+    if(o.fechaPago&&o.fechaPago<=t&&o.pago!=='pagado'&&o.status!=='cancelado'){
+      const prev=o.pago||'sinpagar';
+      o.pago='pagado';
+      o.history=o.history||[];
+      o.history.push({ts:new Date().toISOString(),action:'💰 Cobro automático',detail:`Fecha de cobro alcanzada (${fdate(o.fechaPago)}). Estado anterior: ${PAGO[prev]?.label||prev}`});
+      changed=true;
+    }
+  });
+  if(changed){save();toast('💰 Cobros actualizados automáticamente por fecha pactada');}
+}
+
+// Total Pukis vendidos (global, ignora filtros)
+function totalSold() { return state.orders.filter(o=>o.status!=='cancelado').reduce((s,o)=>s+o.items.reduce((ss,i)=>ss+i.qty,0),0); }
+// Ganancias futuras: pedidos no cobrados con fecha esperada de cobro futura
+function futurePendingRev() { const t=today(); return state.orders.filter(o=>o.pago!=='pagado'&&o.status!=='cancelado'&&o.fechaPago&&o.fechaPago>t).reduce((s,o)=>s+(o.total||0),0); }
+// Helper para renderizar badge de status con color
+function statusBadge(key) { const s=STATUS[key]; if(!s)return key; return `<span class="badge ${s.badge}">${s.label}</span>`; }
+function pagoBadge(key) { const p=PAGO[key||'sinpagar']; if(!p)return key; return `<span class="badge ${p.badge}">${p.label}</span>`; }
+
+function charDisplay(c) {
+  if (!c) return '?';
+  if (photos[c.id]) return `<img src="${photos[c.id]}" class="puki-photo" style="width:36px;height:36px;margin:0">`;
+  return `<span style="font-size:22px">${c.emoji}</span>`;
+}
+
+function charBig(c) {
+  if (!c) return '<span style="font-size:48px">?</span>';
+  if (photos[c.id]) return `<img src="${photos[c.id]}" class="puki-photo">`;
+  return `<span class="puki-emoji">${c.emoji}</span>`;
+}
+
+function toast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ═══════════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════════
+
+function openModal(title, html) {
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-body').innerHTML=html;
+  document.getElementById('mo').classList.remove('hidden');
+}
+function closeModal() { document.getElementById('mo').classList.add('hidden'); }
+
+// ═══════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════
+
+function navigate(mod) {
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.mod===mod));
+  const titles={dashboard:'Dashboard',characters:'Personajes Pukis',inventory:'Inventario Pukis',materials:'Materiales & Packaging',orders:'Pedidos',customers:'Adoptantes',gastos:'Gastos',reports:'Reportes',settings:'Configuración'};
+  const btns={dashboard:'＋ Nuevo Pedido',characters:'＋ Nuevo Personaje',inventory:'✏️ Ajustar Stock',materials:'＋ Nuevo Material',orders:'＋ Nuevo Pedido',customers:'＋ Nuevo Adoptante',gastos:'＋ Gasto / Cuota',reports:'—',settings:'—'};
+  document.getElementById('topbar-title').textContent=titles[mod]||mod;
+  const btn=document.getElementById('topbar-btn');
+  btn.textContent=btns[mod]||'＋ Nuevo';
+  btn.style.display=btns[mod]==='—'?'none':'';
+  state.currentModule=mod;
+  const r={dashboard:renderDashboard,characters:renderCharacters,inventory:renderInventory,materials:renderMaterials,orders:renderOrders,customers:renderCustomers,gastos:renderGastos,reports:renderReports,settings:renderSettings};
+  if(r[mod]) r[mod]();
+}
+
+function topbarAction() {
+  const a={dashboard:openNewOrder,orders:openNewOrder,customers:openNewCustomer,inventory:openAdjustAll,characters:openNewCharacter,materials:openNewMaterial,gastos:openNewGasto};
+  if(a[state.currentModule]) a[state.currentModule]();
+}
+
+// ═══════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════
+
+let dashMonth = ym(0); // filtro de mes activo
+
+function renderDashboard() {
+  const tm=dashMonth, lm=ym(availableMonths().indexOf(tm)+1>=availableMonths().length?-1:-(availableMonths().indexOf(tm)+1));
+  const tRev=monthRev(tm), lRev=monthRev(lm);
+  const tOrd=monthCount(tm), lOrd=monthCount(lm);
+  const tGas=monthGastos(tm), profit=(tRev-tGas);
+  const revChg=lRev?(((tRev-lRev)/lRev)*100).toFixed(0):0;
+
+  const pendOrders=state.orders.filter(o=>['pendiente','preparando'].includes(o.status));
+  const unpaid=state.orders.filter(o=>o.pago==='sinpagar'&&o.status!=='cancelado');
+  const señado=state.orders.filter(o=>o.pago==='señado'&&o.status!=='cancelado');
+  const low=state.characters.filter(c=>{const i=getI(c.id);return i.stock<=i.minStock;});
+  const charSales={};
+  state.orders.forEach(o=>o.items.forEach(i=>{if(!i.mystery)charSales[i.cid]=(charSales[i.cid]||0)+i.qty;}));
+  const best=Object.entries(charSales).sort((a,b)=>b[1]-a[1])[0];
+  const bestC=best?getC(best[0]):null;
+
+  // Pukis a preparar: items de pedidos pendiente/preparando, agrupados por personaje
+  const toMake={};
+  pendOrders.forEach(o=>o.items.forEach(i=>{
+    if(!i.mystery) toMake[i.cid]=(toMake[i.cid]||0)+i.qty;
+  }));
+
+  // Insights
+  const insights=[];
+  const gChonchin=gastosPorQuien('chonchin'), gFranchinita=gastosPorQuien('franchinita');
+  if(gChonchin>0) insights.push({ico:'💳',type:'warn',msg:`<strong>Hay que pagarle a Chonchin: ${ars(gChonchin)}</strong> en gastos que adelantó para Pukis.`});
+  if(gFranchinita>0) insights.push({ico:'💳',type:'warn',msg:`<strong>Hay que pagarle a Franchinita: ${ars(gFranchinita)}</strong> en gastos que adelantó para Pukis.`});
+  if(unpaid.length>0) insights.push({ico:'💰',type:'warn',msg:`Tenés <strong>${unpaid.length} pedido(s) sin cobrar</strong> por <strong>${ars(unpaid.reduce((s,o)=>s+o.total,0))}</strong>. Confirmá el pago antes de enviar.`});
+  if(señado.length>0) insights.push({ico:'🤝',type:'info',msg:`<strong>${señado.length} pedido(s) señados</strong> — falta cobrar el saldo de <strong>${ars(señado.reduce((s,o)=>s+o.total*0.5,0))}</strong> (aprox.).`});
+  low.forEach(c=>{const inv=getI(c.id);const pending=toMake[c.id]||0;insights.push({ico:'⚠️',type:'warn',msg:`<strong>${c.emoji} ${c.name}</strong> tiene solo ${inv.stock} unidades en stock${pending>0?` y ${pending} pedido(s) pendiente(s)`:''}. Considerá arrancar una nueva tanda.`});});
+  if(Object.keys(toMake).length>0) insights.push({ico:'🖨️',type:'info',msg:`Hay <strong>${Object.values(toMake).reduce((a,b)=>a+b,0)} Pukis por preparar</strong> para pedidos activos: ${Object.entries(toMake).map(([id,q])=>`${getC(id)?.emoji||'?'} ${getC(id)?.name||id} ×${q}`).join(', ')}.`});
+  if(+revChg<-10) insights.push({ico:'📉',type:'warn',msg:`Los ingresos de este mes bajaron un <strong>${Math.abs(revChg)}%</strong> vs el mes anterior. Puede ser buen momento para una promoción.`});
+  if(+revChg>10) insights.push({ico:'🚀',type:'ok',msg:`¡Los ingresos subieron un <strong>${revChg}%</strong> respecto al mes pasado! 🎉`});
+  if(bestC) insights.push({ico:'🏆',type:'ok',msg:`<strong>${bestC.emoji} ${bestC.name}</strong> es el Puki más adoptado con <strong>${best[1]} adopciones</strong>. Asegurate de tener stock suficiente.`});
+  if(profit<0&&tGas>0) insights.push({ico:'🔴',type:'warn',msg:`Este mes los gastos (${ars(tGas)}) superan los ingresos cobrados (${ars(tRev)}). Revisá si hay cobros pendientes.`});
+
+  const months=availableMonths();
+
+  document.getElementById('content').innerHTML = `
+    <!-- Filtro de mes -->
+    <div class="flex aic g2" style="margin-bottom:16px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:700;color:var(--text-muted)">Período:</span>
+      ${months.slice(0,6).map(m=>`<button class="f-btn ${dashMonth===m?'active':''}" onclick="dashMonth='${m}';renderDashboard()">${ymLabel(m)}</button>`).join('')}
+    </div>
+
+    <div class="stats-grid">
+      ${(()=>{const pct=recoveryPct();const inv=totalInvertido();const cob=totalCobrado();const col=pct>=100?'var(--success)':pct>=60?'var(--warning)':'var(--danger)';return`<div class="stat-card" style="grid-column:span 2"><div class="stat-icon si-green">📊</div><div style="flex:1"><div style="display:flex;align-items:baseline;gap:6px"><div class="stat-value" style="color:${col}">${pct}%</div><div class="stat-label" style="margin:0">invertido recuperado</div></div><div style="margin:6px 0 4px;height:7px;background:var(--border);border-radius:100px;overflow:hidden"><div style="height:100%;width:${Math.min(100,pct)}%;background:${col};border-radius:100px;transition:width 0.5s"></div></div><div style="font-size:11px;color:var(--text-muted)">Cobrado <strong>${ars(cob)}</strong> / Invertido <strong>${ars(inv)}</strong>${inv>cob?` · Falta recuperar <strong style="color:var(--danger)">${ars(inv-cob)}</strong>`:' · ✅ Meta alcanzada'}</div></div></div>`;})()}
+      <div class="stat-card"><div class="stat-icon si-green">💰</div><div><div class="stat-value">${ars(tRev)}</div><div class="stat-label">Ingresos cobrados</div><div class="stat-change ${+revChg>=0?'up':'dn'}">${+revChg>=0?'↑':'↓'} ${Math.abs(revChg)}% vs mes ant.</div></div></div>
+      <div class="stat-card"><div class="stat-icon si-yellow">🛒</div><div><div class="stat-value">${tOrd}</div><div class="stat-label">Pedidos este mes</div><div class="stat-change ${tOrd>=lOrd?'up':'dn'}">${tOrd>=lOrd?'↑':'↓'} ${Math.abs(tOrd-lOrd)} vs mes ant.</div></div></div>
+      <div class="stat-card"><div class="stat-icon si-red">💸</div><div><div class="stat-value">${ars(tGas)}</div><div class="stat-label">Gastos este mes</div></div></div>
+      <div class="stat-card"><div class="stat-icon si-green">📈</div><div><div class="stat-value">${ars(profit)}</div><div class="stat-label">Ganancia neta</div><div class="stat-change ${profit>=0?'up':'dn'}">${profit>=0?'✓ Positivo':'↓ Negativo'}</div></div></div>
+      <div class="stat-card"><div class="stat-icon si-brown">📦</div><div><div class="stat-value">${totalStock()}</div><div class="stat-label">Stock total</div><div class="stat-change ${low.length===0?'up':'dn'}">${low.length===0?'✓ Saludable':`${low.length} bajo mínimo`}</div></div></div>
+      <div class="stat-card" style="cursor:pointer" onclick="navigate('orders')">
+        <div class="stat-icon si-terra">📋</div>
+        <div><div class="stat-value">${pendOrders.length}</div><div class="stat-label">Pedidos activos</div><div class="stat-change ${unpaid.length>0?'dn':'up'}">${unpaid.length>0?`${unpaid.length} sin cobrar`:'✓ Todo cobrado'}</div></div>
+      </div>
+      ${bestC?`<div class="stat-card"><div class="stat-icon" style="background:${bestC.light||'#f5f0e8'}">${charDisplay(bestC)}</div><div><div class="stat-value">${bestC.name}</div><div class="stat-label">Más adoptado</div><div class="stat-change up">${best[1]} adopciones</div></div></div>`:''}
+      <div class="stat-card"><div class="stat-icon si-green">💚</div><div><div class="stat-value">${state.customers.length}</div><div class="stat-label">Adoptantes</div><div class="stat-change up">${state.orders.length} adopciones</div></div></div>
+      <div class="stat-card"><div class="stat-icon si-brown">🐾</div><div><div class="stat-value">${totalSold()}</div><div class="stat-label">Total Pukis 🐾</div><div class="stat-change up">todas las ventas</div></div></div>
+      ${(()=>{const todayS=today();const porCobrar=state.orders.filter(o=>o.pago!=='pagado'&&o.status!=='cancelado').reduce((s,o)=>s+(o.total||0),0);const futuro=state.orders.filter(o=>o.pago!=='pagado'&&o.status!=='cancelado'&&o.fechaPago&&o.fechaPago>todayS).reduce((s,o)=>s+(o.total||0),0);return porCobrar>0?`<div class="stat-card"><div class="stat-icon si-yellow">⏳</div><div><div class="stat-value">${ars(porCobrar)}</div><div class="stat-label">Por cobrar</div><div class="stat-change" style="color:var(--warning)">${futuro>0?`inc. ${ars(futuro)} futuros`:señado.length+' señado(s)'}</div></div></div>`:'';})()}
+      ${(()=>{const todayS=today();const futuro=state.orders.filter(o=>o.pago!=='pagado'&&o.status!=='cancelado'&&o.fechaPago&&o.fechaPago>todayS).reduce((s,o)=>s+(o.total||0),0);return futuro>0?`<div class="stat-card"><div class="stat-icon si-terra">📅</div><div><div class="stat-value">${ars(futuro)}</div><div class="stat-label">Cobros futuros</div><div class="stat-change" style="color:var(--warning)">fechas pactadas</div></div></div>`:'';})()}
+      ${gChonchin>0?`<div class="stat-card" style="border-color:var(--details)"><div class="stat-icon si-yellow">👤</div><div><div class="stat-value">${ars(gChonchin)}</div><div class="stat-label">A pagarle a Chonchin</div><div class="stat-change dn">pendiente reembolso</div></div></div>`:''}
+      ${gFranchinita>0?`<div class="stat-card" style="border-color:var(--details)"><div class="stat-icon si-terra">👤</div><div><div class="stat-value">${ars(gFranchinita)}</div><div class="stat-label">A pagarle a Franchinita</div><div class="stat-change dn">pendiente reembolso</div></div></div>`:''}
+      ${totalGastosUSD()>0?`<div class="stat-card"><div class="stat-icon si-brown">💵</div><div><div class="stat-value">u$s ${totalGastosUSD().toLocaleString('es-AR')}</div><div class="stat-label">Gastos en USD</div><div class="stat-change" style="color:var(--text-muted)">≈ ${ars(totalGastosUSD()*(state.settings.cotizacionUSD||1))}</div></div></div>`:''}
+    </div>
+
+    <!-- Insights -->
+    ${insights.length?`
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">💡 Insights — qué hacer ahora</div></div>
+      <div class="card-body" style="padding:12px 18px">
+        ${insights.map(ins=>`
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-light)">
+            <span style="font-size:18px;flex-shrink:0;margin-top:1px">${ins.ico}</span>
+            <div style="font-size:13px;line-height:1.55;color:var(--text)">${ins.msg}</div>
+          </div>`).join('')}
+      </div>
+    </div>`:''}
+
+    <!-- Pukis a preparar -->
+    ${Object.keys(toMake).length?`
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header">
+        <div class="card-title">🖨️ Pukis por preparar (pedidos activos)</div>
+        <button class="btn btn-s btn-sm" onclick="navigate('orders')">Ver pedidos</button>
+      </div>
+      <div class="card-body">
+        <div style="display:flex;flex-wrap:wrap;gap:10px">
+          ${Object.entries(toMake).map(([cid,qty])=>{const c=getC(cid);const inv=getI(cid);const ok=inv.stock>=qty;return`<div style="background:${ok?'#edfae6':'#fde8e0'};border:1.5px solid ${ok?'#a3d98a':'#f5b8a0'};border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px">
+            ${charDisplay(c)}<div>
+              <div style="font-weight:700;font-size:13px">${c?.name||cid}</div>
+              <div style="font-size:12px;color:var(--text-muted)">×${qty} pedido(s) · Stock: ${inv.stock} ${ok?'✓':'⚠️ stock insuficiente'}</div>
+            </div>
+          </div>`;}).join('')}
+        </div>
+      </div>
+    </div>`:''}
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="card-title">📦 Stock por Personaje</div></div>
+        <div class="card-body">
+          ${state.characters.map(c=>{const inv=getI(c.id);const pct=Math.min(100,(inv.stock/Math.max(inv.stock,20))*100);const lo=inv.stock<=inv.minStock;return`<div style="margin-bottom:11px"><div class="flex aic jb" style="margin-bottom:4px"><span style="font-size:13px;font-weight:600">${c.emoji} ${c.name}</span><span style="font-size:11px;color:${lo?'var(--danger)':'var(--text-muted)'};font-weight:700">${inv.stock} uds${lo?' ⚠️':''}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${lo?'var(--warning)':c.color||'var(--primary)'}"></div></div></div>`;}).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">💸 Gastos del mes</div><button class="btn btn-s btn-sm" onclick="navigate('gastos')">Ver todos</button></div>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Monto</th></tr></thead>
+            <tbody>
+              ${[...state.gastos].filter(g=>g.fecha.startsWith(tm)).sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(g=>`<tr><td>${fdate(g.fecha)}</td><td>${g.desc}</td><td><span class="badge bter">${g.cat}</span></td><td><strong>${ars(g.monto)}</strong></td></tr>`).join('')||`<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:16px">Sin gastos este mes</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════
+// CHARACTERS
+// ═══════════════════════════════════════════════════
+
+function renderCharacters() {
+  document.getElementById('content').innerHTML = `
+    <div class="puki-grid">
+      ${state.characters.map(c=>`
+        <div class="puki-card" style="border-color:${(c.color||'#ccc')}40">
+          <div class="puki-hd" style="background:${c.light||'#f5f0e8'}">
+            ${charBig(c)}
+            <div class="puki-name">${c.name}</div>
+            <div class="puki-type">${c.type}</div>
+            <div class="puki-ability">"${c.ability}"</div>
+          </div>
+          <div class="puki-bd">
+            ${Object.entries(TRAIT_LABELS).map(([k,l])=>`<div class="tr-row"><span class="tr-name">${l}</span><span><span style="color:#d4a800">${'★'.repeat(c.traits[k])}</span><span style="color:var(--border)">${'★'.repeat(5-c.traits[k])}</span></span></div>`).join('')}
+          </div>
+          <div class="puki-sb">
+            <span>Stock: <strong>${getI(c.id).stock}</strong></span>
+            <div style="display:flex;gap:6px">
+              <button class="btn-ico" onclick="openEditCharacter('${c.id}')">✏️</button>
+              ${c._custom?`<button class="btn-ico" onclick="deleteCharacter('${c.id}')">🗑️</button>`:''}
+            </div>
+          </div>
+        </div>`).join('')}
+      <div class="puki-card" style="border:2px dashed var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;min-height:280px" onclick="openNewCharacter()">
+        <div style="text-align:center;color:var(--text-muted)">
+          <div style="font-size:36px;margin-bottom:8px">➕</div>
+          <div style="font-weight:600;font-size:14px">Nuevo Personaje</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function charForm(c={}) {
+  const isEdit = !!c.id;
+  const t = c.traits||{ternura:3,curiosidad:3,jugabilidad:3,compania:3,valentia:3};
+  return `
+    <div style="text-align:center;margin-bottom:16px">
+      <div id="char-photo-wrap">
+        ${c.id && photos[c.id]?`<img src="${photos[c.id]}" class="photo-preview" id="char-photo-img">`:`<div id="char-photo-img" style="width:80px;height:80px;border-radius:50%;background:var(--bg);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:36px">${c.emoji||'🐾'}</div>`}
+      </div>
+      <label class="btn btn-s btn-sm" style="cursor:pointer">📷 Subir foto <input type="file" accept="image/*" id="char-file" style="display:none" onchange="previewCharPhoto(this,'${c.id||'new'}')"></label>
+      <div class="fh" style="margin-top:4px">O usá el emoji abajo si no tenés foto</div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Nombre *</label><input class="fi" id="c-name" value="${c.name||''}"></div>
+      <div class="fg"><label class="fl">Tipo (ej: Dinosaurio)</label><input class="fi" id="c-type" value="${c.type||''}"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Emoji (si no hay foto)</label><input class="fi" id="c-emoji" value="${c.emoji||'🐾'}"></div>
+      <div class="fg"><label class="fl">Color tarjeta</label><input type="color" id="c-color" value="${c.color||'#73ac53'}" style="height:38px;width:100%"></div>
+    </div>
+    <div class="fg"><label class="fl">Habilidad especial</label><input class="fi" id="c-ability" value="${c.ability||''}"></div>
+    <div class="fg"><label class="fl">Historia</label><textarea class="fta" id="c-story">${c.story||''}</textarea></div>
+    <div style="font-size:12px;font-weight:700;color:var(--contrast);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px">Personalidad (1–5)</div>
+    ${Object.entries(TRAIT_LABELS).map(([k,l])=>`
+      <div class="fg">
+        <div class="flex aic jb"><label class="fl" style="margin:0">${l}</label><span id="tv-${k}" style="font-size:13px;font-weight:700;color:var(--primary)">${t[k]}</span></div>
+        <input type="range" min="1" max="5" value="${t[k]}" id="tr-${k}" oninput="document.getElementById('tv-${k}').textContent=this.value">
+      </div>`).join('')}
+    <div class="mf">
+      <button class="btn btn-s" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-p" onclick="saveCharacter('${c.id||''}')">Guardar</button>
+    </div>`;
+}
+
+function openNewCharacter() { openModal('🐾 Nuevo Personaje', charForm()); }
+function openEditCharacter(id) { const c=getC(id); if(c) openModal(`✏️ ${c.name}`, charForm(c)); }
+
+function previewCharPhoto(input, charId) {
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');
+      const max=400; let w=img.width,h=img.height;
+      if(w>max||h>max){if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;}}
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      const data=canvas.toDataURL('image/jpeg',0.8);
+      photos[charId]=data;
+      const el=document.getElementById('char-photo-img');
+      if(el.tagName==='IMG'){el.src=data;}
+      else{const newImg=document.createElement('img');newImg.src=data;newImg.className='photo-preview';newImg.id='char-photo-img';el.replaceWith(newImg);}
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveCharacter(editId) {
+  const name=(document.getElementById('c-name').value||'').trim();
+  if(!name){alert('El nombre es obligatorio');return;}
+  const data={
+    name, type:document.getElementById('c-type').value,
+    emoji:document.getElementById('c-emoji').value||'🐾',
+    color:document.getElementById('c-color').value,
+    light:document.getElementById('c-color').value+'22',
+    ability:document.getElementById('c-ability').value,
+    story:document.getElementById('c-story').value,
+    traits:{
+      ternura:+document.getElementById('tr-ternura').value,
+      curiosidad:+document.getElementById('tr-curiosidad').value,
+      jugabilidad:+document.getElementById('tr-jugabilidad').value,
+      compania:+document.getElementById('tr-compania').value,
+      valentia:+document.getElementById('tr-valentia').value
+    }
+  };
+  if(editId){
+    const idx=state.characters.findIndex(c=>c.id===editId);
+    if(idx>=0){state.characters[idx]={...state.characters[idx],...data};}
+    // Move temp photo to real id
+    if(photos['new']){photos[editId]=photos['new'];delete photos['new'];}
+  } else {
+    const newId=uid();
+    data.id=newId; data._custom=true;
+    state.characters.push(data);
+    if(photos['new']){photos[newId]=photos['new'];delete photos['new'];}
+    if(!state.inventory[newId]) state.inventory[newId]={stock:0,minStock:3,price:4500,cost:1200};
+  }
+  save(); closeModal(); toast('✅ Personaje guardado'); renderCharacters();
+}
+
+function deleteCharacter(id) {
+  if(!confirm('¿Eliminar este personaje?'))return;
+  state.characters=state.characters.filter(c=>c.id!==id);
+  delete photos[id];
+  save(); toast('🗑️ Personaje eliminado'); renderCharacters();
+}
+
+// ═══════════════════════════════════════════════════
+// INVENTORY
+// ═══════════════════════════════════════════════════
+
+function renderInventory() {
+  const totals=state.characters.reduce((a,c)=>{const i=getI(c.id);a.s+=i.stock;a.v+=(i.stock*i.price);a.c+=(i.stock*i.cost);return a;},{s:0,v:0,c:0});
+  document.getElementById('content').innerHTML=`
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat-card"><div class="stat-icon si-brown">📦</div><div><div class="stat-value">${totals.s}</div><div class="stat-label">Total en stock</div></div></div>
+      <div class="stat-card"><div class="stat-icon si-green">💰</div><div><div class="stat-value">${ars(totals.v)}</div><div class="stat-label">Valor de venta</div></div></div>
+      <div class="stat-card"><div class="stat-icon si-yellow">🏭</div><div><div class="stat-value">${ars(totals.c)}</div><div class="stat-label">Costo de stock</div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Inventario por Personaje</div><button class="btn btn-p btn-sm" onclick="openAdjustAll()">✏️ Ajuste Masivo</button></div>
+      <div class="tw"><table>
+        <thead><tr><th>Personaje</th><th>Stock</th><th>Mínimo</th><th>Precio Venta</th><th>Costo Unit.</th><th>Margen</th><th></th></tr></thead>
+        <tbody>
+          ${state.characters.map(c=>{const inv=getI(c.id);const mg=inv.price?Math.round(((inv.price-inv.cost)/inv.price)*100):0;const lo=inv.stock<=inv.minStock;return`<tr>
+            <td><div class="flex aic g2">${charDisplay(c)}<div><div style="font-weight:600">${c.name}</div><div style="font-size:11px;color:var(--text-muted)">${c.type}</div></div></div></td>
+            <td><span style="font-size:16px;font-weight:700;color:${lo?'var(--danger)':'var(--text)'}">${inv.stock}</span>${lo?' <span class="badge br">Bajo</span>':''}</td>
+            <td>${inv.minStock}</td><td>${ars(inv.price)}</td><td>${ars(inv.cost)}</td>
+            <td><span style="color:${mg>=50?'var(--success)':'var(--warning)'};font-weight:700">${mg}%</span></td>
+            <td><button class="btn btn-s btn-sm" onclick="openEditStock('${c.id}')">✏️</button></td>
+          </tr>`;}).join('')}
+        </tbody>
+      </table></div>
+    </div>`;
+}
+
+function openEditStock(cid) {
+  const c=getC(cid),inv=getI(cid);
+  openModal(`${c.emoji} ${c.name} — Stock`,`
+    <div class="fr"><div class="fg"><label class="fl">Stock Actual</label><input class="fi" type="number" id="is" value="${inv.stock}" min="0"></div><div class="fg"><label class="fl">Stock Mínimo</label><input class="fi" type="number" id="im" value="${inv.minStock}" min="0"></div></div>
+    <div class="fr"><div class="fg"><label class="fl">Precio Venta ($)</label><input class="fi" type="number" id="ip" value="${inv.price}" min="0"></div><div class="fg"><label class="fl">Costo Unitario ($)</label><input class="fi" type="number" id="ic" value="${inv.cost}" min="0"></div></div>
+    <div class="mf"><button class="btn btn-s" onclick="closeModal()">Cancelar</button><button class="btn btn-p" onclick="saveStock('${cid}')">Guardar</button></div>`);
+}
+
+function saveStock(cid) {
+  state.inventory[cid]={stock:+document.getElementById('is').value||0,minStock:+document.getElementById('im').value||5,price:+document.getElementById('ip').value||4500,cost:+document.getElementById('ic').value||1200};
+  save();closeModal();toast('✅ Stock actualizado');renderInventory();
+}
+
+function openAdjustAll() {
+  openModal('📦 Ajuste Masivo',`
+    ${state.characters.map(c=>`<div class="flex aic g2" style="margin-bottom:9px"><span style="font-size:20px;width:26px">${c.emoji}</span><span style="font-weight:600;flex:1;font-size:13px">${c.name}</span><input class="fi" type="number" id="bulk-${c.id}" value="${getI(c.id).stock}" min="0" style="width:80px"></div>`).join('')}
+    <div class="mf"><button class="btn btn-s" onclick="closeModal()">Cancelar</button><button class="btn btn-p" onclick="saveBulkStock()">Guardar Todo</button></div>`);
+}
+
+function saveBulkStock() {
+  state.characters.forEach(c=>{const el=document.getElementById(`bulk-${c.id}`);if(el){const inv=getI(c.id);state.inventory[c.id]={...inv,stock:+el.value||0};}});
+  save();closeModal();toast('✅ Inventario actualizado');renderInventory();
+}
+
+// ═══════════════════════════════════════════════════
+// MATERIALS
+// ═══════════════════════════════════════════════════
+
+function renderMaterials() {
+  const rows=state.materials.map(m=>{
+    const lo=!isNaN(+m.stock)&&m.stock!==''&&+m.stock<=5;
+    const statusClass=m.stock==='Ok'?'mat-status-ok':m.stock==='Comprar'?'mat-status-buy':lo?'dn':'';
+    return`<tr>
+      <td style="font-weight:500">${m.desc}</td>
+      <td><span class="${statusClass}" style="font-weight:600">${m.stock===''?'—':m.stock}</span></td>
+      <td style="color:var(--text-muted)">${m.plancha===''?'—':m.plancha}</td>
+      <td><button class="btn-ico" onclick="openEditMaterial('${m.id}')">✏️</button> <button class="btn-ico" onclick="deleteMaterial('${m.id}')">🗑️</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('content').innerHTML=`
+    <div class="card">
+      <div class="card-header"><div class="card-title">Materiales & Packaging</div><button class="btn btn-p btn-sm" onclick="openNewMaterial()">＋ Nuevo Material</button></div>
+      <div class="tw"><table>
+        <thead><tr><th>Descripción</th><th>Stock</th><th>Plancha / Unidad</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>`;
+}
+
+function openNewMaterial() {
+  openModal('＋ Nuevo Material',materialForm());
+}
+
+function openEditMaterial(id) {
+  const m=state.materials.find(m=>m.id===id);
+  if(m) openModal('✏️ Editar Material',materialForm(m));
+}
+
+function materialForm(m={}) {
+  return`
+    <div class="fg"><label class="fl">Descripción *</label><input class="fi" id="m-desc" value="${m.desc||''}"></div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Stock</label><input class="fi" id="m-stock" value="${m.stock||''}" placeholder="Ej: 38, Ok, Comprar"></div>
+      <div class="fg"><label class="fl">Plancha / Unidad</label><input class="fi" id="m-plancha" value="${m.plancha||''}" placeholder="Ej: 16, 1kg"></div>
+    </div>
+    <div class="mf"><button class="btn btn-s" onclick="closeModal()">Cancelar</button><button class="btn btn-p" onclick="saveMaterial('${m.id||''}')">Guardar</button></div>`;
+}
+
+function saveMaterial(editId) {
+  const desc=(document.getElementById('m-desc').value||'').trim();
+  if(!desc){alert('La descripción es obligatoria');return;}
+  const data={desc,stock:document.getElementById('m-stock').value.trim(),plancha:document.getElementById('m-plancha').value.trim()};
+  if(editId){const idx=state.materials.findIndex(m=>m.id===editId);if(idx>=0)state.materials[idx]={...state.materials[idx],...data};}
+  else state.materials.push({id:uid(),...data});
+  save();closeModal();toast('✅ Material guardado');renderMaterials();
+}
+
+function deleteMaterial(id) {
+  if(!confirm('¿Eliminar este material?'))return;
+  state.materials=state.materials.filter(m=>m.id!==id);
+  save();toast('🗑️ Material eliminado');renderMaterials();
+}
+
+// ═══════════════════════════════════════════════════
+// PRODUCTION
+// ═══════════════════════════════════════════════════
+
+function renderProduction() {
+  const sorted=[...state.productions].sort((a,b)=>b.date.localeCompare(a.date));
+  const tu=sorted.reduce((s,p)=>s+p.qty,0),tf=sorted.reduce((s,p)=>s+p.grams,0),tc=sorted.reduce((s,p)=>s+p.total,0);
+  document.getElementById('content').innerHTML=`
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="stat-card"><div class="stat-icon si-green">🖨️</div><div><div class="stat-value">${tu}</div><div class="stat-label">Unidades producidas</div></div></div>
+      <div class="stat-card"><div class="stat-icon si-yellow">🧵</div><div><div class="stat-value">${(tf/1000).toFixed(2)}kg</div><div class="stat-label">Filamento PLA</div></div></div>
+      <div class="stat-card"><div class="stat-icon si-red">💸</div><div><div class="stat-value">${ars(tc)}</div><div class="stat-label">Costo total</div></div></div>
+      <div class="stat-card"><div class="stat-icon si-brown">📊</div><div><div class="stat-value">${ars(tu?(tc/tu).toFixed(0):0)}</div><div class="stat-label">Costo promedio/ud.</div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Tandas de Producción</div><button class="btn btn-p btn-sm" onclick="openNewProduction()">＋ Nueva Tanda</button></div>
+      ${sorted.length?`<div class="tw"><table>
+        <thead><tr><th>Fecha</th><th>Personaje</th><th>Cant.</th><th>Filamento</th><th>Horas</th><th>Costo Mat.</th><th>Costo Total</th><th>Por Ud.</th><th></th></tr></thead>
+        <tbody>${sorted.map(p=>{const c=getC(p.cid);const cpu=p.qty?(p.total/p.qty).toFixed(0):0;return`<tr>
+          <td>${fdate(p.date)}</td>
+          <td><div class="flex aic g2">${c?charDisplay(c):''}<span style="font-weight:600">${c?c.name:p.cid}</span></div></td>
+          <td><strong>${p.qty}</strong></td><td>${p.grams}g</td><td>${p.hours}h</td>
+          <td>${ars(p.matCost)}</td><td><strong>${ars(p.total)}</strong></td>
+          <td><span class="badge bb">${ars(cpu)}/ud</span></td>
+          <td><button class="btn-ico" onclick="deleteProd('${p.id}')">🗑️</button></td>
+        </tr>`;}).join('')}</tbody>
+      </table></div>`:`<div class="empty"><div class="empty-ico">🖨️</div><div class="empty-t">Sin tandas aún</div><div class="empty-s">Registrá tu primera producción</div></div>`}
+    </div>`;
+}
+
+function openNewProduction() {
+  const opts=state.characters.map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join('');
+  openModal('🖨️ Nueva Tanda',`
+    <div class="fr"><div class="fg"><label class="fl">Personaje</label><select class="fs" id="pc">${opts}</select></div><div class="fg"><label class="fl">Fecha</label><input class="fi" type="date" id="pd" value="${today()}"></div></div>
+    <div class="fr"><div class="fg"><label class="fl">Cantidad</label><input class="fi" type="number" id="pq" value="10" min="1"></div><div class="fg"><label class="fl">Filamento (g)</label><input class="fi" type="number" id="pf" value="120" min="0"></div></div>
+    <div class="fr"><div class="fg"><label class="fl">Horas impresión</label><input class="fi" type="number" id="ph" value="14" min="0"></div><div class="fg"><label class="fl">Costo materiales ($)</label><input class="fi" type="number" id="pm" value="900" min="0"></div></div>
+    <div class="fg"><label class="fl">Costo Total ($)</label><input class="fi" type="number" id="pt" value="10000" min="0"><div class="fh">Incluye materiales + electricidad + tiempo</div></div>
+    <div class="fg"><label class="fl">Notas</label><textarea class="fta" id="pn"></textarea></div>
+    <div class="mf"><button class="btn btn-s" onclick="closeModal()">Cancelar</button><button class="btn btn-p" onclick="saveProd()">Guardar Tanda</button></div>`);
+}
+
+function saveProd() {
+  const cid=document.getElementById('pc').value,qty=+document.getElementById('pq').value||0;
+  const p={id:uid(),cid,qty,grams:+document.getElementById('pf').value||0,hours:+document.getElementById('ph').value||0,date:document.getElementById('pd').value,matCost:+document.getElementById('pm').value||0,total:+document.getElementById('pt').value||0,notes:document.getElementById('pn').value};
+  state.productions.push(p);
+  const inv=getI(cid);
+  state.inventory[cid]={...inv,stock:inv.stock+qty,cost:qty?Math.round(p.total/qty):inv.cost};
+  save();closeModal();toast(`✅ ${qty} unidades registradas`);renderProduction();
+}
+
+function deleteProd(id){if(!confirm('¿Eliminar tanda?'))return;state.productions=state.productions.filter(p=>p.id!==id);save();toast('🗑️ Tanda eliminada');renderProduction();}
+
+// ═══════════════════════════════════════════════════
+// ORDERS
+// ═══════════════════════════════════════════════════
+
+let ordersMonth = 'all';
+let ordersFilterOpen = false;
+
+function renderOrders() {
+  const todayStr=today();
+  // Base: filtro por mes
+  const baseList=[...state.orders].filter(o=>ordersMonth==='all'||(o.date&&o.date.startsWith(ordersMonth)));
+  // KPIs + tabla usan TODOS los filtros activos (mes + avanzados)
+  const kpiList=applyOrderFilters([...baseList]);
+  const kpiPendientes=kpiList.filter(o=>['pendiente','preparando'].includes(o.status)).length;
+  const kpiCompletos=kpiList.filter(o=>o.status==='entregado').length;
+  const kpiCobrado=kpiList.filter(o=>o.pago==='pagado').reduce((s,o)=>s+(o.total||0),0);
+  const kpiPorCobrar=kpiList.filter(o=>o.pago!=='pagado'&&o.status!=='cancelado').reduce((s,o)=>s+(o.total||0),0);
+
+  // Lista filtrada (misma fuente que KPIs)
+  let list=[...kpiList].sort((a,b)=>b.date.localeCompare(a.date));
+
+  const months=availableMonths();
+  const charOpts=state.characters.map(c=>`<option value="${c.id}" ${orderFilters.product===c.id?'selected':''}>${c.emoji} ${c.name}</option>`).join('');
+  const active=hasActiveFilters();
+
+  // Chips de filtros activos para modo colapsado
+  const activeChips=[];
+  if(orderFilters.status) activeChips.push(`<span class="badge ${STATUS[orderFilters.status]?.badge||'bgr'}" style="font-size:10px">${STATUS[orderFilters.status]?.label}</span>`);
+  if(orderFilters.pago) activeChips.push(`<span class="badge ${PAGO[orderFilters.pago]?.badge||'bgr'}" style="font-size:10px">${PAGO[orderFilters.pago]?.label}</span>`);
+  if(orderFilters.channel) activeChips.push(`<span class="badge bgr" style="font-size:10px">${CHANNELS[orderFilters.channel]?.short||orderFilters.channel}</span>`);
+  if(orderFilters.product) activeChips.push(`<span class="badge bb" style="font-size:10px">${getC(orderFilters.product)?.emoji||''} ${getC(orderFilters.product)?.name||''}</span>`);
+  if(orderFilters.dateFrom||orderFilters.dateTo) activeChips.push(`<span class="badge bter" style="font-size:10px">📅 ${orderFilters.dateFrom?fdate(orderFilters.dateFrom):'…'} → ${orderFilters.dateTo?fdate(orderFilters.dateTo):'…'}</span>`);
+  if(ordersSearchVal) activeChips.push(`<span class="badge bgr" style="font-size:10px">🔍 "${ordersSearchVal}"</span>`);
+
+  document.getElementById('content').innerHTML=`
+    <!-- KPIs PEDIDOS -->
+    ${hasActiveFilters()?`<div style="font-size:11px;color:var(--primary);font-weight:600;margin-bottom:6px">📌 KPIs mostrando datos filtrados</div>`:''}
+    <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:14px">
+      <div class="stat-card" style="cursor:pointer" onclick="setOrderFilter('status','');setOrderFilter('status','');ordersFilterOpen=true;renderOrders()">
+        <div class="stat-icon si-yellow">🕐</div>
+        <div><div class="stat-value">${kpiPendientes}</div><div class="stat-label">Pendientes</div><div class="stat-change ${kpiPendientes>0?'dn':'up'}">${kpiPendientes>0?'por preparar':'✓ al día'}</div></div>
+      </div>
+      <div class="stat-card" style="cursor:pointer" onclick="setOrderFilter('status','entregado');ordersFilterOpen=true;renderOrders()">
+        <div class="stat-icon si-green">✅</div>
+        <div><div class="stat-value">${kpiCompletos}</div><div class="stat-label">Completados</div><div class="stat-change up">entregados</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon si-green">💰</div>
+        <div><div class="stat-value">${ars(kpiCobrado)}</div><div class="stat-label">Cobrado</div><div class="stat-change up">${hasActiveFilters()?'filtros activos':ordersMonth==='all'?'total histórico':ymLabel(ordersMonth)}</div></div>
+      </div>
+      <div class="stat-card" style="cursor:pointer" onclick="setOrderFilter('pago','sinpagar');ordersFilterOpen=true;renderOrders()">
+        <div class="stat-icon si-terra">⏳</div>
+        <div><div class="stat-value">${ars(kpiPorCobrar)}</div><div class="stat-label">Por cobrar</div><div class="stat-change ${kpiPorCobrar>0?'dn':'up'}">${kpiPorCobrar>0?'pendiente de cobro':'✓ todo cobrado'}</div></div>
+      </div>
+    </div>
+
+    <!-- FILTRO MES -->
+    <div class="flex aic g2" style="margin-bottom:10px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:700;color:var(--text-muted)">Mes:</span>
+      <button class="f-btn ${ordersMonth==='all'?'active':''}" onclick="ordersMonth='all';renderOrders()">Todos</button>
+      ${months.slice(0,6).map(m=>`<button class="f-btn ${ordersMonth===m?'active':''}" onclick="ordersMonth='${m}';renderOrders()">${ymLabel(m)}</button>`).join('')}
+    </div>
+
+    <!-- FILTROS COLAPSABLES -->
+    <div class="filter-panel" style="margin-bottom:14px">
+      <!-- Header del panel (siempre visible) -->
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <input class="search-in" type="text" placeholder="🔍 Buscar nombre o nota…" value="${ordersSearchVal}" oninput="ordersSearchVal=this.value;renderOrders()" style="flex:1;min-width:130px">
+        <button class="btn btn-s btn-sm" style="white-space:nowrap" onclick="ordersFilterOpen=!ordersFilterOpen;renderOrders()">${ordersFilterOpen?'▲ Ocultar':'▼ Más filtros'}${active&&!ordersFilterOpen?' <span style=\'background:var(--primary);color:#fff;border-radius:100px;padding:1px 6px;font-size:10px\'>'+activeChips.length+'</span>':''}</button>
+        ${active?`<button class="filter-clear" onclick="clearOrderFilters()">✕ Limpiar</button>`:''}
+        <button class="btn btn-s btn-sm" onclick="exportOrdersCSV()">⬇ CSV</button>
+      </div>
+      <!-- Chips de filtros activos (colapsado) -->
+      ${!ordersFilterOpen&&activeChips.length?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${activeChips.join('')}</div>`:''}
+      <!-- Panel expandido -->
+      ${ordersFilterOpen?`
+      <div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
+        <div><div class="filter-label" style="margin-bottom:4px">Estado envío</div>
+          <select class="fi-sm" style="width:100%" onchange="setOrderFilter('status',this.value)">
+            <option value="">Todos los estados</option>
+            ${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${orderFilters.status===k?'selected':''}>${v.label}</option>`).join('')}
+          </select>
+        </div>
+        <div><div class="filter-label" style="margin-bottom:4px">Cobro</div>
+          <select class="fi-sm" style="width:100%" onchange="setOrderFilter('pago',this.value)">
+            <option value="">Todos</option>
+            ${Object.entries(PAGO).map(([k,v])=>`<option value="${k}" ${orderFilters.pago===k?'selected':''}>${v.label}</option>`).join('')}
+          </select>
+        </div>
+        <div><div class="filter-label" style="margin-bottom:4px">Canal</div>
+          <select class="fi-sm" style="width:100%" onchange="setOrderFilter('channel',this.value)">
+            <option value="">Todos</option>
+            ${Object.entries(CHANNELS).map(([k,v])=>`<option value="${k}" ${orderFilters.channel===k?'selected':''}>${v.label}</option>`).join('')}
+          </select>
+        </div>
+        <div><div class="filter-label" style="margin-bottom:4px">Personaje</div>
+          <select class="fi-sm" style="width:100%" onchange="setOrderFilter('product',this.value)">
+            <option value="">Todos</option>${charOpts}
+          </select>
+        </div>
+        <div><div class="filter-label" style="margin-bottom:4px">Fecha desde</div>
+          <input type="date" class="fi-sm" style="width:100%" value="${orderFilters.dateFrom}" onchange="setOrderFilter('dateFrom',this.value)">
+        </div>
+        <div><div class="filter-label" style="margin-bottom:4px">Fecha hasta</div>
+          <input type="date" class="fi-sm" style="width:100%" value="${orderFilters.dateTo}" onchange="setOrderFilter('dateTo',this.value)">
+        </div>
+      </div>`:''}
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">${list.length} pedido(s)${active?' <span style="font-size:11px;color:var(--primary);font-weight:600">· filtros activos</span>':''}</div>
+        <button class="btn btn-p btn-sm" onclick="openNewOrder()">＋ Nuevo Pedido</button>
+      </div>
+      ${list.length?`<div class="tw"><table>
+        <thead><tr><th>ID</th><th>Fecha</th><th>Adoptante</th><th>Canal</th><th>Items</th><th>Total</th><th>Estado envío</th><th>Cobro</th><th>F. cobro</th><th></th></tr></thead>
+        <tbody id="orders-tbody">
+          ${list.map(o=>{
+            const items=o.items.map(i=>i.mystery?`🎁×${i.qty}`:`${getC(i.cid)?.emoji||'?'}×${i.qty}`).join(' ');
+            const pago=o.pago||'sinpagar';
+            const isFuture=o.fechaPago&&o.fechaPago>todayStr&&pago!=='pagado';
+            return`<tr${o.status==='cancelado'?' style="opacity:0.55"':''}>
+              <td style="font-family:monospace;font-size:11px;color:var(--text-muted)">#${o.id.slice(-5).toUpperCase()}</td>
+              <td>${fdate(o.date)}</td>
+              <td style="font-weight:500">${o.customerName||'—'}</td>
+              <td><span class="${CHANNELS[o.channel]?.badge||'bgr'}">${CHANNELS[o.channel]?.short||o.channel}</span></td>
+              <td style="font-size:12px">${items}</td>
+              <td><strong>${ars(o.total)}</strong></td>
+              <td>
+                <select class="fs" style="padding:3px 7px;font-size:11px;border-radius:6px;width:auto" onchange="updateStatus('${o.id}',this.value)">
+                  ${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${o.status===k?'selected':''}>${v.label}</option>`).join('')}
+                </select>
+              </td>
+              <td>
+                <select class="fs" style="padding:3px 7px;font-size:11px;border-radius:6px;width:auto;background:${pago==='pagado'?'#d9f0c8':pago==='señado'?'#fef3d4':'#fde0dc'}" onchange="updatePago('${o.id}',this.value)">
+                  ${Object.entries(PAGO).map(([k,v])=>`<option value="${k}" ${pago===k?'selected':''}>${v.label}</option>`).join('')}
+                </select>
+              </td>
+              <td style="font-size:11px;white-space:nowrap">${o.fechaPago?`<span style="color:${isFuture?'var(--warning)':'var(--text-muted)'}">${isFuture?'📅 ':''}${fdate(o.fechaPago)}</span>`:'—'}</td>
+              <td style="display:flex;gap:3px">
+                <button class="btn-ico" onclick="openEditOrder('${o.id}')" title="Editar">✏️</button>
+                <button class="btn-ico" onclick="openOrderHistory('${o.id}')" title="Historial">📋</button>
+                <button class="btn-ico" onclick="deleteOrder('${o.id}')" title="Eliminar">🗑️</button>
+              </td>
+            </tr>`;}).join('')}
+        </tbody>
+      </table></div>`:`<div class="empty"><div class="empty-ico">🛒</div><div class="empty-t">Sin pedidos</div><div class="empty-s">${active?'Ningún pedido coincide con los filtros activos.':'Todavía no hay pedidos registrados.'}</div></div>`}
+    </div>`;
+}
+
+function searchOrders(v){ordersSearchVal=v;renderOrders();}
+function updateStatus(id,s){
+  const o=state.orders.find(o=>o.id===id);
+  if(o){
+    const prev=o.status;
+    o.status=s;
+    o.history=o.history||[];
+    o.history.push({ts:new Date().toISOString(),action:'Estado de envío cambiado',detail:`${STATUS[prev]?.label||prev} → ${STATUS[s]?.label||s}`});
+    save();
+  }
+}
+function updatePago(id,p){
+  const o=state.orders.find(o=>o.id===id);
+  if(o){
+    const prev=o.pago||'sinpagar';
+    o.pago=p;
+    o.history=o.history||[];
+    o.history.push({ts:new Date().toISOString(),action:'Estado de cobro cambiado',detail:`${PAGO[prev]?.label||prev} → ${PAGO[p]?.label||p}`});
+    save();
+    toast(p==='pagado'?'✅ Marcado como Cobrado':p==='señado'?'🤝 Marcado como Señado':'Sin cobrar');
+  }
+}
+function deleteOrder(id){if(!confirm('¿Eliminar pedido?'))return;state.orders=state.orders.filter(o=>o.id!==id);save();toast('🗑️');renderOrders();}
+
+// Filtros avanzados
+function applyOrderFilters(list) {
+  const f=orderFilters;
+  if(f.status) list=list.filter(o=>o.status===f.status);
+  if(f.pago) list=list.filter(o=>(o.pago||'sinpagar')===f.pago);
+  if(f.channel) list=list.filter(o=>o.channel===f.channel);
+  if(f.product) list=list.filter(o=>o.items.some(i=>i.cid===f.product));
+  if(f.dateFrom) list=list.filter(o=>o.date>=f.dateFrom);
+  if(f.dateTo) list=list.filter(o=>o.date<=f.dateTo);
+  if(ordersSearchVal) list=list.filter(o=>(o.customerName||'').toLowerCase().includes(ordersSearchVal.toLowerCase())||(o.notes||'').toLowerCase().includes(ordersSearchVal.toLowerCase()));
+  return list;
+}
+function setOrderFilter(key,val){orderFilters[key]=(orderFilters[key]===val?'':val);renderOrders();}
+function clearOrderFilters(){orderFilters={status:'',pago:'',channel:'',product:'',dateFrom:'',dateTo:''};ordersSearchVal='';renderOrders();}
+function hasActiveFilters(){return Object.values(orderFilters).some(v=>v)||!!ordersSearchVal;}
+
+// Historial de pedido
+function openOrderHistory(id){
+  const o=state.orders.find(o=>o.id===id);if(!o)return;
+  const hist=(o.history||[]).slice().reverse();
+  openModal('📋 Historial del pedido #'+o.id.slice(-5).toUpperCase(),
+    hist.length?`<div style="padding:4px 0">${hist.map(h=>{
+      const d=new Date(h.ts);
+      const ds=d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+      return`<div class="history-item"><div class="history-dot"></div><div><div style="display:flex;gap:10px;align-items:baseline"><span class="history-action">${h.action}</span><span class="history-ts">${ds}</span></div>${h.detail?`<div class="history-detail">${h.detail}</div>`:''}</div></div>`;
+    }).join('')}</div><div class="mf"><button class="btn btn-p" onclick="closeModal()">Cerrar</button></div>`
+    :`<div class="empty"><div class="empty-ico">📋</div><div class="empty-t">Sin historial</div><div class="empty-s">Las acciones futuras quedarán registradas aquí</div></div><div class="mf"><button class="btn btn-p" onclick="closeModal()">Cerrar</button></div>`
+  );
+}
+
+function exportOrdersCSV() {
+  const rows=[['ID','Fecha','Adoptante','Canal','Items','Total','Estado','Notas']];
+  state.orders.forEach(o=>{
+    const items=o.items.map(i=>i.mystery?`Mystery x${i.qty}`:`${getC(i.cid)?.name||i.cid} x${i.qty}`).join('; ');
+    rows.push([o.id.slice(-5).toUpperCase(),o.date,o.customerName||'',CHANNELS[o.channel]?.label||o.channel,items,o.total,STATUS[o.status]?.label||o.status,o.notes||'']);
+  });
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv);
+  a.download=`pukis_pedidos_${today()}.csv`; a.click();
+  toast('⬇ CSV descargado');
+}
+
+function orderFormHTML(o={}) {
+  const charOpts=state.characters.map(c=>`<option value="${c.id}">${c.emoji} ${c.name} (Stock: ${getI(c.id).stock})</option>`).join('');
+  const custOpts=state.customers.map(c=>`<option value="${c.id}" ${o.customerId===c.id?'selected':''}>${c.name}</option>`).join('');
+  const chanOpts=Object.entries(CHANNELS).map(([k,v])=>`<option value="${k}" ${o.channel===k?'selected':''}>${v.label}</option>`).join('');
+  const pagoOpts=Object.entries(PAGO).map(([k,v])=>`<option value="${k}" ${(o.pago||'sinpagar')===k?'selected':''}>${v.label}</option>`).join('');
+  const itemsHTML=(o.items||[{cid:'mystery',qty:1,price:4500,mystery:true}]).map(i=>`
+    <div class="oi-row" style="display:grid;grid-template-columns:1fr 65px 105px auto;gap:6px;margin-bottom:6px;align-items:center">
+      <select class="fs" name="ic"><option value="mystery" ${i.mystery?'selected':''}>🎁 Mystery Box</option>${state.characters.map(c=>`<option value="${c.id}" ${i.cid===c.id&&!i.mystery?'selected':''}>${c.emoji} ${c.name}</option>`).join('')}</select>
+      <input class="fi" type="number" name="iq" value="${i.qty||1}" min="1">
+      <input class="fi" type="number" name="ip" value="${i.price||4500}" min="0" placeholder="Precio">
+      <button class="btn-ico" onclick="removeItem(this)" style="color:var(--danger)">✕</button>
+    </div>`).join('');
+  return `
+    <div class="fr">
+      <div class="fg"><label class="fl">Canal</label><select class="fs" id="oc">${chanOpts}</select></div>
+      <div class="fg"><label class="fl">Fecha</label><input class="fi" type="date" id="od" value="${o.date||today()}"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Adoptante</label><select class="fs" id="ocu" onchange="toggleNewCust(this.value)"><option value="">— Sin registrar —</option>${custOpts}<option value="new">➕ Nuevo adoptante…</option></select></div>
+      <div class="fg"><label class="fl">Estado de cobro</label><select class="fs" id="opago">${pagoOpts}</select></div>
+    </div>
+    <div class="fg"><label class="fl">Fecha esperada de cobro <span style="font-size:10px;font-weight:400;color:var(--text-muted)">(opcional — para Ganancias Futuras)</span></label><input class="fi" type="date" id="ofechapago" value="${o.fechaPago||''}"></div>
+    <div id="new-cust-form" style="display:none"><div class="fr"><div class="fg"><label class="fl">Nombre</label><input class="fi" type="text" id="ocn"></div><div class="fg"><label class="fl">Email</label><input class="fi" type="email" id="oce"></div></div></div>
+    <div class="divider"></div>
+    <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Items</div>
+    <div id="order-items">${itemsHTML}</div>
+    <button class="btn btn-s btn-sm" onclick="addItem()" style="margin-bottom:12px">＋ Item</button>
+    <div class="fg"><label class="fl">Notas</label><textarea class="fta" id="on">${o.notes||''}</textarea></div>`;
+}
+
+function openNewOrder() {
+  openModal('🛒 Nuevo Pedido', orderFormHTML() + `
+    <div class="mf"><button class="btn btn-s" onclick="closeModal()">Cancelar</button><button class="btn btn-p" onclick="saveOrder()">Registrar Adopción 💚</button></div>`);
+}
+
+function openEditOrder(id) {
+  const o=state.orders.find(o=>o.id===id); if(!o) return;
+  openModal('✏️ Editar Pedido', orderFormHTML(o) + `
+    <div class="mf"><button class="btn btn-s" onclick="closeModal()">Cancelar</button><button class="btn btn-p" onclick="saveOrder('${id}')">Guardar cambios</button></div>`);
+}
+
+function toggleNewCust(v){document.getElementById('new-cust-form').style.display=v==='new'?'block':'none';}
+function addItem(){const charOpts=state.characters.map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join('');const row=document.createElement('div');row.className='oi-row';row.style.cssText='display:grid;grid-template-columns:1fr 65px 105px auto;gap:6px;margin-bottom:6px;align-items:center';row.innerHTML=`<select class="fs" name="ic"><option value="mystery">🎁 Mystery Box</option>${charOpts}</select><input class="fi" type="number" name="iq" value="1" min="1"><input class="fi" type="number" name="ip" value="4500" min="0"><button class="btn-ico" onclick="removeItem(this)" style="color:var(--danger)">✕</button>`;document.getElementById('order-items').appendChild(row);}
+function removeItem(btn){const rows=document.querySelectorAll('.oi-row');if(rows.length>1)btn.closest('.oi-row').remove();}
+
+function saveOrder(editId) {
+  const channel=document.getElementById('oc').value;
+  const date=document.getElementById('od').value;
+  const custSel=document.getElementById('ocu').value;
+  const pago=document.getElementById('opago').value;
+  const notes=document.getElementById('on').value;
+  const fechaPago=document.getElementById('ofechapago')?.value||'';
+
+  let customerId=null, customerName='';
+  if(custSel==='new'){
+    const name=(document.getElementById('ocn')?.value||'').trim();
+    const email=document.getElementById('oce')?.value||'';
+    if(name){const nc={id:uid(),name,email,phone:'',city:'',createdAt:today(),notes:''};state.customers.push(nc);customerId=nc.id;customerName=name;}
+  } else if(custSel){
+    const c=state.customers.find(c=>c.id===custSel);
+    if(c){customerId=c.id;customerName=c.name;}
+  } else customerName='Cliente sin registrar';
+
+  const rows=document.querySelectorAll('.oi-row'), items=[];
+  let total=0;
+  rows.forEach(r=>{
+    const cid=r.querySelector('[name=ic]').value;
+    const qty=+r.querySelector('[name=iq]').value||1;
+    const price=+r.querySelector('[name=ip]').value||0;
+    items.push({cid,qty,price,mystery:cid==='mystery'});
+    total+=qty*price;
+  });
+
+  if(editId){
+    const old=state.orders.find(o=>o.id===editId);
+    if(old){
+      // Restaurar stock del pedido anterior
+      old.items.forEach(i=>{if(!i.mystery&&state.inventory[i.cid])state.inventory[i.cid].stock+=i.qty;});
+      items.forEach(i=>{if(!i.mystery&&state.inventory[i.cid])state.inventory[i.cid].stock=Math.max(0,state.inventory[i.cid].stock-i.qty);});
+      // Log history
+      old.history = old.history||[];
+      const changes=[];
+      if(old.pago!==pago) changes.push(`Cobro: ${PAGO[old.pago]?.label||old.pago} → ${PAGO[pago]?.label||pago}`);
+      if(old.date!==date) changes.push(`Fecha: ${fdate(old.date)} → ${fdate(date)}`);
+      if((old.fechaPago||'')!==fechaPago) changes.push(`Fecha cobro: ${old.fechaPago?fdate(old.fechaPago):'—'} → ${fechaPago?fdate(fechaPago):'—'}`);
+      if(old.notes!==notes) changes.push('Notas actualizadas');
+      if(changes.length) old.history.push({ts:new Date().toISOString(),action:'Pedido editado',detail:changes.join(' · ')});
+      Object.assign(old,{date,channel,customerId,customerName,items,total,pago,notes,fechaPago});
+    }
+    save();closeModal();toast('✅ Pedido actualizado');
+  } else {
+    items.forEach(i=>{if(!i.mystery&&state.inventory[i.cid])state.inventory[i.cid].stock=Math.max(0,state.inventory[i.cid].stock-i.qty);});
+    const newOrder={id:uid(),date,channel,customerId,customerName,items,total,status:'pendiente',pago,fechaPago,notes,history:[{ts:new Date().toISOString(),action:'Pedido creado',detail:`${ars(total)} · ${CHANNELS[channel]?.label||channel} · ${PAGO[pago]?.label||pago}`}]};
+    state.orders.push(newOrder);
+    syncOrderToSheet({date,customerName,channel:CHANNELS[channel]?.label||channel,items:items.map(i=>i.mystery?`Mystery x${i.qty}`:`${getC(i.cid)?.name||i.cid} x${i.qty}`).join('; '),total,status:'Pendiente',pago:PAGO[pago]?.label||pago,notes});
+    toast(`✅ Adopción registrada: ${ars(total)}`);
+  }
+  save();closeModal();renderOrders();
+}
+
+async function syncOrderToSheet(data) {
+  const url=state.settings.ventasUrl;
+  if(!url) return;
+  try {
+    await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    toast('☁️ Sincronizado con Google Sheets');
+  } catch(e) { /* silent */ }
+}
+
+// ═══════════════════════════════════════════════════
+// CUSTOMERS
+// ═══════════════════════════════════════════════════
+
+function renderCustomers() {
+  const tot=state.customers.reduce((s,c)=>s+state.orders.filter(o=>o.customerId===c.id).reduce((ss,o)=>ss+o.total,0),0);
+  document.getElementById('content').innerHTML=`
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat-card"><div class="stat-icon si-green">💚</div><div><div class="stat-value">${state.customers.length}</div><div class="stat-label">Adoptantes</div></div></div>
+      <div class="stat-card"><div class="stat-icon si-yellow">🛒</div><div><div class="stat-value">${state.orders.length}</div><div class="stat-label">Total adopciones</div></div></div>
+      <div class="stat-card"><div class="stat-icon si-brown">💰</div><div><div class="stat-value">${ars(tot)}</div><div class="stat-label">Revenue adoptantes</div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Adoptantes Pukis</div><button class="btn btn-p btn-sm" onclick="openNewCustomer()">＋ Nuevo</button></div>
+      ${state.customers.length?`<div class="tw"><table>
+        <thead><tr><th>Adoptante</th><th>Ciudad</th><th>Teléfono</th><th>Pedidos</th><th>Pukis adoptados</th><th>Total gastado</th><th>Desde</th><th></th></tr></thead>
+        <tbody>${state.customers.map(cu=>{const ords=state.orders.filter(o=>o.customerId===cu.id);const spent=ords.reduce((s,o)=>s+o.total,0);const pukis=[...new Set(ords.flatMap(o=>o.items.filter(i=>!i.mystery).map(i=>i.cid)))];const emojis=pukis.map(id=>getC(id)?.emoji||'?').join(' ');return`<tr>
+          <td><div style="font-weight:600">${cu.name}</div><div style="font-size:11px;color:var(--text-muted)">${cu.email||''}</div></td>
+          <td>${cu.city||'—'}</td><td>${cu.phone||'—'}</td><td><strong>${ords.length}</strong></td>
+          <td>${emojis||'—'}</td><td><strong>${ars(spent)}</strong></td><td>${fdate(cu.createdAt)}</td>
+          <td><button class="btn-ico" onclick="editCustomer('${cu.id}')">✏️</button> <button class="btn-ico" onclick="deleteCustomer('${cu.id}')">🗑️</button></td>
+        </tr>`;}).join('')}</tbody>
+      </table></div>`:`<div class="empty"><div class="empty-ico">💚</div><div class="empty-t">Sin adoptantes</div></div>`}
+    </div>`;
+}
+
+function custForm(d={}){return`<div class="fr"><div class="fg"><label class="fl">Nombre *</label><input class="fi" id="cn" value="${d.name||''}"></div><div class="fg"><label class="fl">Email</label><input class="fi" type="email" id="ce" value="${d.email||''}"></div></div><div class="fr"><div class="fg"><label class="fl">Teléfono</label><input class="fi" id="cp" value="${d.phone||''}"></div><div class="fg"><label class="fl">Ciudad</label><input class="fi" id="cc" value="${d.city||''}"></div></div><div class="fg"><label class="fl">Notas</label><textarea class="fta" id="cno">${d.notes||''}</textarea></div><div class="mf"><button class="btn btn-s" onclick="closeModal()">Cancelar</button><button class="btn btn-p" onclick="saveCustomer('${d.id||''}')">Guardar 💚</button></div>`;}
+function openNewCustomer(){openModal('💚 Nuevo Adoptante',custForm());}
+function editCustomer(id){const c=state.customers.find(c=>c.id===id);if(c)openModal('✏️ Editar',custForm(c));}
+function saveCustomer(editId){const name=(document.getElementById('cn').value||'').trim();if(!name){alert('Nombre obligatorio');return;}if(editId){const c=state.customers.find(c=>c.id===editId);if(c){c.name=name;c.email=document.getElementById('ce').value;c.phone=document.getElementById('cp').value;c.city=document.getElementById('cc').value;c.notes=document.getElementById('cno').value;}}else{state.customers.push({id:uid(),name,email:document.getElementById('ce').value,phone:document.getElementById('cp').value,city:document.getElementById('cc').value,createdAt:today(),notes:document.getElementById('cno').value});}save();closeModal();toast('✅ Adoptante guardado');renderCustomers();}
+function deleteCustomer(id){if(!confirm('¿Eliminar?'))return;state.customers=state.customers.filter(c=>c.id!==id);save();toast('🗑️');renderCustomers();}
+
+// ═══════════════════════════════════════════════════
+// GASTOS
+// ═══════════════════════════════════════════════════
+
+function applyGastosFilters(list) {
+  const f=gastosFilters;
+  if(f.quien) list=list.filter(g=>g.quien===f.quien);
+  if(f.cat) list=list.filter(g=>g.cat===f.cat);
+  if(f.moneda) list=list.filter(g=>(g.moneda||'ARS')===f.moneda);
+  if(f.dateFrom) list=list.filter(g=>g.fecha>=f.dateFrom);
+  if(f.dateTo) list=list.filter(g=>g.fecha<=f.dateTo);
+  if(gastosSearch) list=list.filter(g=>(g.desc||'').toLowerCase().includes(gastosSearch.toLowerCase()));
+  return list;
+}
+function setGastoFilter(k,v){gastosFilters[k]=gastosFilters[k]===v?'':v;renderGastos();}
+function clearGastosFilters(){gastosFilters={quien:'',cat:'',moneda:'',dateFrom:'',dateTo:''};gastosSearch='';renderGastos();}
+function hasActiveGastosFilters(){return Object.values(gastosFilters).some(v=>v)||!!gastosSearch;}
+
+function renderGastos() {
+  const t=today();
+  const allSorted=[...state.gastos].sort((a,b)=>{
+    const aF=a._futura&&a.fechaVence&&a.fechaVence>t;
+    const bF=b._futura&&b.fechaVence&&b.fechaVence>t;
+    if(aF&&!bF) return 1; if(!aF&&bF) return -1;
+    if(aF&&bF) return (a.fechaVence||'').localeCompare(b.fechaVence||'');
+    return b.fecha.localeCompare(a.fecha);
+  });
+  const filtered=applyGastosFilters(allSorted);
+  const active=hasActiveGastosFilters();
+
+  // KPI calculations — usan datos filtrados si hay filtros activos
+  const kpiSrc = active ? filtered : allSorted;
+  const cuotasFuturas=kpiSrc.filter(g=>g._futura&&g.fechaVence&&g.fechaVence>t);
+  const gastosReales=kpiSrc.filter(g=>!g._futura||!g.fechaVence||g.fechaVence<=t);
+  const totalReal=gastosReales.reduce((s,g)=>s+gastoARS(g),0);
+  const totalFuturo=cuotasFuturas.reduce((s,g)=>s+gastoARS(g),0);
+  const totalUSD=kpiSrc.filter(g=>g.moneda==='USD').reduce((s,g)=>s+(g.monto||0),0);
+  const pct=recoveryPct(); // siempre global (salud general del negocio)
+  const col=pct>=100?'var(--success)':pct>=60?'var(--warning)':'var(--danger)';
+  // Reembolso: neto de lo que todavía se debe a cada persona (filtrado también)
+  const gChonchin=kpiSrc.filter(g=>g.quien==='chonchin').reduce((s,g)=>s+Math.max(0,gastoARS(g)-(g.montoReembolso||0)),0);
+  const gFranchinita=kpiSrc.filter(g=>g.quien==='franchinita').reduce((s,g)=>s+Math.max(0,gastoARS(g)-(g.montoReembolso||0)),0);
+  const gPukis=kpiSrc.filter(g=>g.quien==='pukis'||!g.quien).reduce((s,g)=>s+gastoARS(g),0);
+  const hasUrl=!!state.settings.gastosUrl;
+  const allCats=[...new Set(state.gastos.map(g=>g.cat).filter(Boolean))];
+
+  document.getElementById('content').innerHTML=`
+    <!-- KPIs -->
+    ${active?`<div style="font-size:11px;color:var(--primary);font-weight:600;margin-bottom:6px">📌 KPIs mostrando datos filtrados</div>`:''}
+    <div class="stats-grid" style="margin-bottom:14px">
+      <div class="stat-card" style="grid-column:span 2"><div class="stat-icon si-green">📊</div><div style="flex:1">
+        <div style="display:flex;align-items:baseline;gap:6px"><div class="stat-value" style="color:${col}">${pct}%</div><div class="stat-label" style="margin:0">inversión recuperada</div></div>
+        <div style="margin:5px 0 3px;height:7px;background:var(--border);border-radius:100px;overflow:hidden"><div style="height:100%;width:${Math.min(100,pct)}%;background:${col};border-radius:100px"></div></div>
+        <div style="font-size:11px;color:var(--text-muted)">Cobrado <strong>${ars(totalCobrado())}</strong> · Invertido <strong>${ars(totalInvertido())}</strong>${totalInvertido()>totalCobrado()?` · Falta <strong style="color:var(--danger)">${ars(totalInvertido()-totalCobrado())}</strong>`:' ✅'}</div>
+      </div></div>
+      <div class="stat-card"><div class="stat-icon si-red">💸</div><div><div class="stat-value">${ars(totalReal)}</div><div class="stat-label">Gastado real</div></div></div>
+      ${totalFuturo>0?`<div class="stat-card"><div class="stat-icon si-terra">📅</div><div><div class="stat-value">${ars(totalFuturo)}</div><div class="stat-label">Cuotas futuras</div><div class="stat-change" style="color:var(--warning)">${cuotasFuturas.length} pend.</div></div></div>`:''}
+      ${totalUSD>0?`<div class="stat-card"><div class="stat-icon si-brown">💵</div><div><div class="stat-value">u$s ${totalUSD.toLocaleString('es-AR')}</div><div class="stat-label">Total en USD</div><div class="stat-change" style="color:var(--text-muted)">≈ ${ars(totalUSD*(state.settings.cotizacionUSD||1))} ARS</div></div></div>`:''}
+      ${gPukis>0?`<div class="stat-card"><div class="stat-icon si-brown">🐾</div><div><div class="stat-value">${ars(gPukis)}</div><div class="stat-label">Pagado por Pukis</div></div></div>`:''}
+      ${gChonchin>0?`<div class="stat-card" style="border:1.5px solid var(--details)"><div class="stat-icon si-yellow">👤</div><div><div class="stat-value">${ars(gChonchin)}</div><div class="stat-label">A reembolsar — Chonchin</div><div class="stat-change dn">💳 pendiente devolución</div></div></div>`:''}
+      ${gFranchinita>0?`<div class="stat-card" style="border:1.5px solid var(--details)"><div class="stat-icon si-terra">👤</div><div><div class="stat-value">${ars(gFranchinita)}</div><div class="stat-label">A reembolsar — Franchinita</div><div class="stat-change dn">💳 pendiente devolución</div></div></div>`:''}
+    </div>
+
+    <!-- FILTROS COLAPSABLES -->
+    <div class="filter-panel" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <input class="search-in" type="text" placeholder="🔍 Buscar descripción…" value="${gastosSearch}" oninput="gastosSearch=this.value;renderGastos()" style="flex:1;min-width:130px">
+        <button class="btn btn-s btn-sm" onclick="gastosFilterOpen=!gastosFilterOpen;renderGastos()">${gastosFilterOpen?'▲ Ocultar':'▼ Filtros'}${active&&!gastosFilterOpen?` <span style='background:var(--primary);color:#fff;border-radius:100px;padding:1px 6px;font-size:10px'>${Object.values(gastosFilters).filter(Boolean).length+!!gastosSearch}</span>`:''}</button>
+        ${active?`<button class="filter-clear" onclick="clearGastosFilters()">✕ Limpiar</button>`:''}
+      </div>
+      ${gastosFilterOpen?`
+      <div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
+        <div><div class="filter-label" style="margin-bottom:4px">Quién pagó</div>
+          <select class="fi-sm" style="width:100%" onchange="setGastoFilter('quien',this.value)">
+            <option value="">Todos</option>
+            ${Object.entries(QUIEN).map(([k,v])=>`<option value="${k}" ${gastosFilters.quien===k?'selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <div><div class="filter-label" style="margin-bottom:4px">Categoría</div>
+          <select class="fi-sm" style="width:100%" onchange="setGastoFilter('cat',this.value)">
+            <option value="">Todas</option>
+            ${allCats.map(c=>`<option value="${c}" ${gastosFilters.cat===c?'selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div><div class="filter-label" style="margin-bottom:4px">Moneda</div>
+          <select class="fi-sm" style="width:100%" onchange="setGastoFilter('moneda',this.value)">
+            <option value="">ARS + USD</option>
+            <option value="ARS" ${gastosFilters.moneda==='ARS'?'selected':''}>Solo ARS</option>
+            <option value="USD" ${gastosFilters.moneda==='USD'?'selected':''}>Solo USD</option>
+          </select>
+        </div>
+        <div><div class="filter-label" style="margin-bottom:4px">Fecha desde</div>
+          <input type="date" class="fi-sm" style="width:100%" value="${gastosFilters.dateFrom}" onchange="setGastoFilter('dateFrom',this.value)">
+        </div>
+        <div><div class="filter-label" style="margin-bottom:4px">Fecha hasta</div>
+          <input type="date" class="fi-sm" style="width:100%" value="${gastosFilters.dateTo}" onchange="setGastoFilter('dateTo',this.value)">
+        </div>
+      </div>`:''}
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">${filtered.length} gasto(s)${active?' <span style="font-size:11px;color:var(--primary);font-weight:600">· filtros activos</span>':''}</div>
+        <button class="btn btn-p btn-sm" onclick="openNewGasto()">＋ Gasto / Cuota</button>
+      </div>
+      ${filtered.length?`<div class="tw"><table>
+        <thead><tr><th>Fecha</th><th>Descripción</th><th>Quién</th><th>Categoría</th><th>Monto</th><th>Estado</th><th></th></tr></thead>
+        <tbody>${filtered.map(g=>{
+          const esFutura=g._futura&&g.fechaVence&&g.fechaVence>t;
+          const esVencida=g._futura&&g.fechaVence&&g.fechaVence<=t;
+          const isUSD=(g.moneda||'ARS')==='USD';
+          const montoDisplay=isUSD?`u$s ${g.monto} <span style="font-size:10px;color:var(--text-muted)">(≈${ars(gastoARS(g))})</span>`:`<strong>${ars(g.monto)}</strong>`;
+          return`<tr style="${esFutura?'background:rgba(227,189,138,0.07)':''}">
+          <td style="white-space:nowrap">${esFutura?`📅 Vence ${fdate(g.fechaVence)}`:fdate(g.fecha)}${esVencida?` <span style="font-size:10px;color:var(--danger)">⚠️</span>`:''}</td>
+          <td style="font-weight:500">${g.desc}</td>
+          <td><span class="badge bgr" style="font-size:10px">${QUIEN[g.quien||'pukis']||g.quien||'Pukis 🐾'}</span>${g.quien&&g.quien!=='pukis'&&(g.montoReembolso||0)>0?`<div style="font-size:10px;color:var(--success);margin-top:2px;font-weight:600">✓ devuelto: ${ars(g.montoReembolso)}</div>`:''}${g.quien&&g.quien!=='pukis'&&(g.montoReembolso||0)===0?`<div style="font-size:10px;color:var(--danger);margin-top:2px">💳 pendiente</div>`:''}</td>
+          <td><span class="badge bter">${g.cat}</span></td>
+          <td style="color:${esFutura?'var(--warning)':''};">${montoDisplay}${isUSD?` <span class="badge bb" style="font-size:9px">USD</span>`:''}</td>
+          <td>${esFutura?`<span class="badge by">Cuota futura</span>`:esVencida?`<span class="badge br">Vencida</span>`:g._source==='sheets'?`<span class="badge bg">Sheets</span>`:`<span class="badge bgr">Manual</span>`}</td>
+          <td style="white-space:nowrap">${g._source==='sheets'?'':`<button class="btn-ico" onclick="openEditGasto('${g.id}')" title="Editar">✏️</button> <button class="btn-ico" onclick="deleteGasto('${g.id}')" title="Eliminar">🗑️</button>`}</td>
+        </tr>`}).join('')}</tbody>
+      </table></div>`:`<div class="empty"><div class="empty-ico">💸</div><div class="empty-t">Sin gastos${active?' con esos filtros':''}</div></div>`}
+    </div>`;
+}
+
+function gastoFormHTML(g={}) {
+  const cats=['Producción','Packaging','Servicios','Marketing','Logística','Otro'];
+  const isUSD=(g.moneda||'ARS')==='USD';
+  return`
+    <div class="fr">
+      <div class="fg"><label class="fl">Fecha de registro</label><input class="fi" type="date" id="gf" value="${g.fecha||today()}"></div>
+      <div class="fg"><label class="fl">Moneda</label>
+        <select class="fs" id="g-moneda" onchange="toggleGastoMoneda(this.value)">
+          <option value="ARS" ${!isUSD?'selected':''}>ARS $</option>
+          <option value="USD" ${isUSD?'selected':''}>USD u$s</option>
+        </select>
+      </div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl" id="g-monto-label">Monto ${isUSD?'(USD)':'(ARS)'} *</label><input class="fi" type="number" id="gm" min="0" placeholder="0" value="${g.monto||''}"></div>
+      <div class="fg" id="g-cotiz-wrap" style="display:${isUSD?'block':'none'}">
+        <label class="fl">Cotización USD → ARS</label>
+        <input class="fi" type="number" id="g-cotiz" min="1" placeholder="${state.settings.cotizacionUSD||1000}" value="${g.cotizacion||state.settings.cotizacionUSD||1000}">
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Descripción *</label><input class="fi" id="gd" placeholder="Ej: Filamento PLA 1kg" value="${g.desc||''}"></div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Categoría</label><select class="fs" id="gc">${cats.map(c=>`<option ${g.cat===c?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="fg"><label class="fl">Quién pagó</label>
+        <select class="fs" id="g-quien" onchange="toggleGastoQuien(this.value)">
+          ${Object.entries(QUIEN).map(([k,v])=>`<option value="${k}" ${(g.quien||'pukis')===k?'selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div id="g-reembolso-wrap" style="display:${(g.quien&&g.quien!=='pukis')?'block':'none'}">
+      <div class="fg">
+        <label class="fl">💳 Monto ya devuelto (ARS)</label>
+        <input class="fi" type="number" id="g-reembolso" min="0" value="${g.montoReembolso||''}" placeholder="0">
+        <div class="fh">Si ya le devolviste parte o todo, ingresá el monto en ARS. Reduce lo que figura como pendiente de reembolso en los KPIs.</div>
+      </div>
+    </div>
+    <div class="fg" style="background:var(--bg);border-radius:8px;padding:10px 12px;border:1px solid var(--border)">
+      <label style="display:flex;align-items:center;gap:9px;cursor:pointer;margin-bottom:0">
+        <input type="checkbox" id="g-futura" ${g._futura?'checked':''} onchange="document.getElementById('g-vence-wrap').style.display=this.checked?'block':'none'" style="width:15px;height:15px;accent-color:var(--primary)">
+        <span style="font-size:13px;font-weight:600;color:var(--contrast)">📅 Es cuota / pago a futuro</span>
+      </label>
+      <div class="fh">Marcalo si este gasto es un pago programado que todavía no realizaste.</div>
+      <div id="g-vence-wrap" style="display:${g._futura?'block':'none'};margin-top:10px">
+        <label class="fl">Fecha de vencimiento / cuándo se paga</label>
+        <input class="fi" type="date" id="gv" value="${g.fechaVence||''}">
+      </div>
+    </div>`;
+}
+function toggleGastoMoneda(v){
+  const isUSD=v==='USD';
+  document.getElementById('g-cotiz-wrap').style.display=isUSD?'block':'none';
+  document.getElementById('g-monto-label').textContent='Monto '+(isUSD?'(USD)':'(ARS)')+' *';
+}
+function toggleGastoQuien(v){
+  const wrap=document.getElementById('g-reembolso-wrap');
+  if(wrap) wrap.style.display=(v&&v!=='pukis')?'block':'none';
+}
+
+function openNewGasto(){
+  openModal('💸 Nuevo Gasto', gastoFormHTML()+`
+    <div class="mf"><button class="btn btn-s" onclick="closeModal()">Cancelar</button><button class="btn btn-p" onclick="saveGasto('')">Guardar</button></div>`);
+}
+
+function openEditGasto(id){
+  const g=state.gastos.find(g=>g.id===id); if(!g) return;
+  openModal('✏️ Editar Gasto', gastoFormHTML(g)+`
+    <div class="mf"><button class="btn btn-s" onclick="closeModal()">Cancelar</button><button class="btn btn-p" onclick="saveGasto('${id}')">Guardar cambios</button></div>`);
+}
+
+function saveGasto(editId){
+  const desc=(document.getElementById('gd').value||'').trim(),monto=+document.getElementById('gm').value||0;
+  if(!desc||!monto){alert('Descripción y monto son obligatorios');return;}
+  const esFutura=document.getElementById('g-futura')?.checked||false;
+  const fechaVence=esFutura?(document.getElementById('gv')?.value||''):'';
+  const moneda=document.getElementById('g-moneda')?.value||'ARS';
+  const cotizacion=moneda==='USD'?(+document.getElementById('g-cotiz')?.value||state.settings.cotizacionUSD||1):0;
+  const quien=document.getElementById('g-quien')?.value||'pukis';
+  const montoReembolso=quien!=='pukis'?(+document.getElementById('g-reembolso')?.value||0):0;
+  // Actualizar cotización en settings si se ingresó una nueva
+  if(moneda==='USD'&&cotizacion) state.settings.cotizacionUSD=cotizacion;
+  const data={fecha:document.getElementById('gf').value,desc,monto,cat:document.getElementById('gc').value,_futura:esFutura,fechaVence,moneda,cotizacion:moneda==='USD'?cotizacion:0,quien,montoReembolso};
+  if(editId){
+    const idx=state.gastos.findIndex(g=>g.id===editId);
+    if(idx>=0) state.gastos[idx]={...state.gastos[idx],...data};
+    toast('✅ Gasto actualizado');
+  } else {
+    state.gastos.push({id:uid(),...data});
+    toast(esFutura?'📅 Cuota futura registrada':moneda==='USD'?`✅ Gasto USD registrado (×${cotizacion} = ${ars(monto*cotizacion)})`:'✅ Gasto registrado');
+  }
+  save();closeModal();renderGastos();
+}
+function deleteGasto(id){if(!confirm('¿Eliminar?'))return;state.gastos=state.gastos.filter(g=>g.id!==id);save();toast('🗑️');renderGastos();}
+
+async function syncGastos() {
+  const url=state.settings.gastosUrl;
+  if(!url){toast('⚠️ Configurá la URL en ⚙️ Configuración');return;}
+  toast('⏳ Sincronizando...');
+  try {
+    const res=await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const text=await res.text();
+    const rows=parseCSV(text).filter(r=>r.length>=3);
+    if(!rows.length){toast('⚠️ Sin datos en el Sheet');return;}
+    // Remove old sheets entries and re-import
+    state.gastos=state.gastos.filter(g=>g._source!=='sheets');
+    let imported=0;
+    rows.slice(1).forEach(row=>{
+      const fecha=row[0]?.trim(),desc=row[1]?.trim(),monto=parseFloat((row[2]||'').replace(/[$\s\.]/g,'').replace(',','.'));
+      if(desc&&monto){state.gastos.push({id:uid(),fecha:parseDateES(fecha),desc,monto,cat:row[3]?.trim()||'General',_source:'sheets'});imported++;}
+    });
+    save();toast(`✅ ${imported} gastos importados desde Google Sheets`);renderGastos();
+  } catch(e){toast('❌ Error: '+e.message+'. Verificá que el Sheet sea público (Archivo → Compartir → Publicar en la web)');}
+}
+
+function parseCSV(text){return text.split('\n').map(line=>{const r=[];let cur='',inQ=false;for(const ch of line){if(ch==='"')inQ=!inQ;else if(ch===','&&!inQ){r.push(cur.trim());cur='';}else cur+=ch;}r.push(cur.trim());return r;}).filter(r=>r.some(c=>c));}
+
+function parseDateES(str){if(!str)return today();const p=str.split('/');if(p.length===3){return`${p[2].length===2?'20'+p[2]:p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;}return str;}
+
+// ═══════════════════════════════════════════════════
+// REPORTS
+// ═══════════════════════════════════════════════════
+
+let reportsMonth = 'all';
+
+function renderReports() {
+  const filtOrders = reportsMonth==='all' ? state.orders : state.orders.filter(o=>o.date&&o.date.startsWith(reportsMonth));
+  const filtGastos = reportsMonth==='all' ? state.gastos : state.gastos.filter(g=>g.fecha&&g.fecha.startsWith(reportsMonth));
+
+  const charRev={},charCost={};
+  state.characters.forEach(c=>{charRev[c.id]=0;charCost[c.id]=0;});
+  // Ingresos = solo pedidos cobrados
+  filtOrders.filter(o=>o.pago==='pagado').forEach(o=>o.items.forEach(i=>{if(!i.mystery)charRev[i.cid]=(charRev[i.cid]||0)+i.qty*i.price;}));
+  state.productions.forEach(p=>{charCost[p.cid]=(charCost[p.cid]||0)+p.total;});
+  const chanRev={};Object.keys(CHANNELS).forEach(k=>chanRev[k]=0);
+  filtOrders.filter(o=>o.pago==='pagado').forEach(o=>{chanRev[o.channel]=(chanRev[o.channel]||0)+o.total;});
+  const months=[],monthArr=[];
+  for(let i=5;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;months.push(d.toLocaleDateString('es-AR',{month:'short',year:'2-digit'}));monthArr.push(monthRev(k));}
+  const totalRev=filtOrders.filter(o=>o.pago==='pagado').reduce((s,o)=>s+o.total,0);
+  const todayStr=today();
+  const futureRev=filtOrders.filter(o=>o.pago!=='pagado'&&o.status!=='cancelado'&&o.fechaPago&&o.fechaPago>todayStr).reduce((s,o)=>s+o.total,0);
+  const pendingRev=filtOrders.filter(o=>o.pago!=='pagado'&&o.status!=='cancelado'&&(!o.fechaPago||o.fechaPago<=todayStr)).reduce((s,o)=>s+o.total,0);
+  const totalCost=filtGastos.reduce((s,g)=>s+g.monto,0);
+  const profit=totalRev-totalCost;
+  const margin=totalRev?((profit/totalRev)*100).toFixed(1):0;
+  const profitRows=[...state.characters].map(c=>{const rev=charRev[c.id]||0,cost=charCost[c.id]||0,pf=rev-cost,mg=rev?((pf/rev)*100).toFixed(0):0,units=filtOrders.reduce((s,o)=>s+o.items.filter(i=>i.cid===c.id).reduce((ss,i)=>ss+i.qty,0),0);return{c,rev,cost,pf,mg,units};}).sort((a,b)=>b.rev-a.rev);
+  const availMonths=availableMonths();
+
+  document.getElementById('content').innerHTML=`
+    <!-- Filtro mes reportes -->
+    <div class="flex aic g2" style="margin-bottom:16px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:700;color:var(--text-muted)">Período:</span>
+      <button class="f-btn ${reportsMonth==='all'?'active':''}" onclick="reportsMonth='all';renderReports()">Todo</button>
+      ${availMonths.slice(0,6).map(m=>`<button class="f-btn ${reportsMonth===m?'active':''}" onclick="reportsMonth='${m}';renderReports()">${ymLabel(m)}</button>`).join('')}
+    </div>
+    <div class="stats-grid">
+      ${(()=>{const pct=recoveryPct();const inv=totalInvertido();const cob=totalCobrado();const col=pct>=100?'var(--success)':pct>=60?'var(--warning)':'var(--danger)';return`<div class="stat-card" style="grid-column:span 2"><div class="stat-icon si-green">📊</div><div style="flex:1"><div style="display:flex;align-items:baseline;gap:6px"><div class="stat-value" style="color:${col}">${pct}%</div><div class="stat-label" style="margin:0">inversión recuperada</div></div><div style="margin:5px 0 3px;height:7px;background:var(--border);border-radius:100px;overflow:hidden"><div style="height:100%;width:${Math.min(100,pct)}%;background:${col};border-radius:100px;transition:width 0.5s"></div></div><div style="font-size:11px;color:var(--text-muted)">Cobrado <strong>${ars(cob)}</strong> / Invertido <strong>${ars(inv)}</strong>${inv>cob?` · Falta <strong style="color:var(--danger)">${ars(inv-cob)}</strong>`:' ✅'}</div></div></div>`;})()}
+      <div class="stat-card"><div class="stat-icon si-green">💰</div><div><div class="stat-value">${ars(totalRev)}</div><div class="stat-label">Ingresos cobrados</div></div></div>
+      ${futureRev>0?`<div class="stat-card"><div class="stat-icon si-terra">📅</div><div><div class="stat-value">${ars(futureRev)}</div><div class="stat-label">Cobros futuros</div></div></div>`:''}
+      ${pendingRev>0?`<div class="stat-card"><div class="stat-icon si-yellow">⏳</div><div><div class="stat-value">${ars(pendingRev)}</div><div class="stat-label">Por cobrar</div></div></div>`:''}
+      <div class="stat-card"><div class="stat-icon si-red">💸</div><div><div class="stat-value">${ars(totalCost)}</div><div class="stat-label">Gastos del período</div></div></div>
+      <div class="stat-card"><div class="stat-icon si-yellow">📈</div><div><div class="stat-value">${ars(profit)}</div><div class="stat-label">Ganancia neta</div></div></div>
+      <div class="stat-card"><div class="stat-icon si-terra">%</div><div><div class="stat-value">${margin}%</div><div class="stat-label">Margen</div></div></div>
+      ${gastosPorQuien('chonchin')>0?`<div class="stat-card" style="border-color:var(--details)"><div class="stat-icon si-yellow">👤</div><div><div class="stat-value">${ars(gastosPorQuien('chonchin'))}</div><div class="stat-label">Pagado Chonchin</div><div class="stat-change dn">a reembolsar</div></div></div>`:''}
+      ${gastosPorQuien('franchinita')>0?`<div class="stat-card" style="border-color:var(--details)"><div class="stat-icon si-terra">👤</div><div><div class="stat-value">${ars(gastosPorQuien('franchinita'))}</div><div class="stat-label">Pagado Franchinita</div><div class="stat-change dn">a reembolsar</div></div></div>`:''}
+      ${totalGastosUSD()>0?`<div class="stat-card"><div class="stat-icon si-brown">💵</div><div><div class="stat-value">u$s ${totalGastosUSD().toLocaleString('es-AR')}</div><div class="stat-label">Gastos en USD</div><div class="stat-change" style="color:var(--text-muted)">cotiz. ${ars(state.settings.cotizacionUSD||1)}</div></div></div>`:''}
+    </div>
+    <div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-title">Ingresos por Personaje</div></div><div class="card-body"><div class="chart-container"><canvas id="rchart"></canvas></div></div></div>
+      <div class="card"><div class="card-header"><div class="card-title">Ventas por Canal</div></div><div class="card-body"><div class="chart-container"><canvas id="cchart"></canvas></div></div></div>
+    </div>
+    <div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">Tendencia — últimos 6 meses</div></div><div class="card-body"><div class="chart-container"><canvas id="tchart"></canvas></div></div></div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Rentabilidad por Personaje</div></div>
+      <div class="tw"><table>
+        <thead><tr><th>Personaje</th><th>Uds. vendidas</th><th>Ingresos</th><th>Costo prod.</th><th>Ganancia</th><th>Margen</th></tr></thead>
+        <tbody>${profitRows.map(({c,rev,cost,pf,mg,units})=>`<tr>
+          <td><div class="flex aic g2">${charDisplay(c)}<span style="font-weight:600">${c.name}</span></div></td>
+          <td>${units}</td><td>${ars(rev)}</td><td>${ars(cost)}</td>
+          <td style="color:${pf>=0?'var(--success)':'var(--danger)'};font-weight:700">${ars(pf)}</td>
+          <td><span class="badge ${mg>=50?'bg':mg>=30?'by':'br'}">${mg}%</span></td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+    </div>`;
+
+  setTimeout(()=>{
+    if(charts.r)charts.r.destroy();if(charts.c)charts.c.destroy();if(charts.t)charts.t.destroy();
+    charts.r=new Chart(document.getElementById('rchart'),{type:'bar',data:{labels:state.characters.map(c=>`${c.emoji} ${c.name}`),datasets:[{label:'Ingresos',data:state.characters.map(c=>charRev[c.id]||0),backgroundColor:state.characters.map(c=>c.color||'#73ac53'),borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'$'+v.toLocaleString('es-AR')}}}}});
+    const act=Object.entries(chanRev).filter(([,v])=>v>0);
+    charts.c=new Chart(document.getElementById('cchart'),{type:'doughnut',data:{labels:act.map(([k])=>CHANNELS[k]?.label||k),datasets:[{data:act.map(([,v])=>v),backgroundColor:['#73ac53','#E3BD8A','#D19F86','#8d7455','#564030'],borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+    charts.t=new Chart(document.getElementById('tchart'),{type:'line',data:{labels:months,datasets:[{label:'Ingresos',data:monthArr,borderColor:'#73ac53',backgroundColor:'rgba(115,172,83,0.1)',fill:true,tension:0.4,borderWidth:2,pointRadius:5,pointBackgroundColor:'#73ac53'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'$'+v.toLocaleString('es-AR')}}}}});
+  },60);
+}
+
+// ═══════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════
+
+function renderSettings() {
+  document.getElementById('content').innerHTML=`
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">⚙️ Configuración General</div></div>
+      <div class="card-body">
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-title">Moneda</div>
+            <div class="setting-desc">Moneda para mostrar precios</div>
+          </div>
+          <select class="fs" style="width:120px" onchange="state.settings.currency=this.value;save();toast('✅ Guardado')" >
+            <option value="ARS" ${state.settings.currency==='ARS'?'selected':''}>ARS $</option>
+            <option value="USD" ${state.settings.currency==='USD'?'selected':''}>USD $</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-title">💵 Cotización USD</div>
+            <div class="setting-desc">Tipo de cambio para convertir gastos en dólares a pesos. Se actualiza automáticamente cuando cargás un gasto en USD.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input class="fi" type="number" id="s-cotiz" value="${state.settings.cotizacionUSD||1000}" min="1" style="width:120px" placeholder="Ej: 1200">
+            <button class="btn btn-s btn-sm" onclick="state.settings.cotizacionUSD=+document.getElementById('s-cotiz').value||1;save();toast('✅ Cotización guardada')">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">📊 Integración Google Sheets</div></div>
+      <div class="card-body">
+        <div class="alert a-info" style="margin-bottom:16px">
+          ℹ️ Para leer <strong>Gastos</strong>: publicá tu Google Sheet como CSV (Archivo → Compartir → Publicar en la web → seleccionar pestaña → CSV) y pegá la URL abajo.<br><br>
+          Para sincronizar <strong>Pedidos</strong> automáticamente, necesitás un Google Apps Script. <button class="btn btn-s btn-sm" onclick="showScriptInstructions()">Ver instrucciones</button>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-title">URL Google Sheets — Gastos</div>
+            <div class="setting-desc">URL del Sheet de gastos publicado como CSV. Tu Sheet debe tener columnas: Fecha | Descripción | Monto | Categoría</div>
+          </div>
+        </div>
+        <div class="fg">
+          <input class="fi" id="s-gastos-url" value="${state.settings.gastosUrl||''}" placeholder="https://docs.google.com/spreadsheets/d/…/pub?output=csv">
+        </div>
+        <button class="btn btn-s btn-sm" onclick="saveGastosUrl()">Guardar URL Gastos</button>
+        ${state.settings.gastosUrl?`<button class="btn btn-p btn-sm" style="margin-left:8px" onclick="syncGastos()">🔄 Sincronizar Gastos</button>`:''}
+
+        <div class="divider"></div>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-title">URL Apps Script — Pedidos</div>
+            <div class="setting-desc">URL de tu Google Apps Script Web App para registrar pedidos automáticamente en el Sheet.</div>
+          </div>
+        </div>
+        <div class="fg">
+          <input class="fi" id="s-ventas-url" value="${state.settings.ventasUrl||''}" placeholder="https://script.google.com/macros/s/…/exec">
+        </div>
+        <button class="btn btn-s btn-sm" onclick="saveVentasUrl()">Guardar URL Pedidos</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">🗑️ Datos</div></div>
+      <div class="card-body">
+        <div class="alert a-info" style="margin-bottom:0">
+          <div>
+            <strong>¿Por qué se pierden los datos?</strong><br>
+            El ERP guarda datos en el navegador (<em>localStorage</em>). Si abrís el archivo desde el <strong>panel de preview de Claude Code</strong> (localhost) y luego lo abrís <strong>directamente desde el escritorio</strong> (file://), son lugares de guardado distintos. <br><br>
+            <strong>Solución:</strong> siempre abrí el archivo de la misma forma. O usá el Backup para portabilidad total.
+          </div>
+        </div>
+        <div style="height:14px"></div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-title">Exportar Backup completo</div>
+            <div class="setting-desc">Descargá un archivo .json con todos tus datos. Guardalo en un lugar seguro.</div>
+          </div>
+          <button class="btn btn-s btn-sm" onclick="exportBackup()">⬇ Exportar .json</button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-title">Importar Backup</div>
+            <div class="setting-desc">Restaurá datos desde un backup .json exportado anteriormente.</div>
+          </div>
+          <label class="btn btn-s btn-sm" style="cursor:pointer">📂 Importar .json<input type="file" accept=".json" style="display:none" onchange="importBackup(this)"></label>
+        </div>
+        ${!state._realDataImported?`
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-title">📥 Importar datos reales</div>
+            <div class="setting-desc">Carga los gastos e ingresos reales desde la planilla (solo se puede hacer una vez, agrega sin borrar).</div>
+          </div>
+          <button class="btn btn-p btn-sm" onclick="importMyData()">📥 Importar ahora</button>
+        </div>`:`
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-title" style="color:var(--success)">✅ Datos reales importados</div>
+            <div class="setting-desc">Los gastos e ingresos reales ya fueron cargados.</div>
+          </div>
+        </div>`}
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-title">Resetear a datos de demo</div>
+            <div class="setting-desc" style="color:var(--danger)">⚠️ Borra todos los datos y vuelve al estado inicial</div>
+          </div>
+          <button class="btn btn-d btn-sm" onclick="resetData()">⚠️ Resetear</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function saveGastosUrl(){const url=document.getElementById('s-gastos-url').value.trim();state.settings.gastosUrl=url;save();toast('✅ URL guardada');renderSettings();}
+function saveVentasUrl(){const url=document.getElementById('s-ventas-url').value.trim();state.settings.ventasUrl=url;save();toast('✅ URL guardada');}
+
+function showScriptInstructions(){
+  openModal('🤖 Google Apps Script — Pedidos automáticos',`
+    <div style="font-size:13px;line-height:1.7;color:var(--text)">
+      <p style="margin-bottom:12px"><strong>Pasos para conectar pedidos con Google Sheets:</strong></p>
+      <ol style="padding-left:18px;margin-bottom:16px">
+        <li>Abrí tu Google Sheet de ventas</li>
+        <li>Ir a <strong>Extensiones → Apps Script</strong></li>
+        <li>Pegá el código de abajo y guardá</li>
+        <li>Clic en <strong>Implementar → Nueva implementación → Aplicación web</strong></li>
+        <li>Ejecutar como: <strong>Yo</strong> · Quién puede acceder: <strong>Cualquier persona</strong></li>
+        <li>Copiá la URL de implementación y pegala en Configuración</li>
+      </ol>
+      <pre style="background:#f5ede3;padding:12px;border-radius:8px;font-size:11px;overflow-x:auto;border:1px solid var(--border)">function doPost(e) {
+  const sheet = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName('Pedidos')
+    || SpreadsheetApp.getActiveSpreadsheet()
+       .insertSheet('Pedidos');
+
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(['Fecha','Cliente','Canal',
+      'Items','Total','Estado','Notas']);
+  }
+
+  const d = JSON.parse(e.postData.contents);
+  sheet.appendRow([d.date, d.customerName,
+    d.channel, d.items, d.total,
+    d.status, d.notes]);
+
+  return ContentService
+    .createTextOutput('OK')
+    .setMimeType(ContentService.MimeType.TEXT);
+}</pre>
+    </div>
+    <div class="mf"><button class="btn btn-p" onclick="closeModal()">Entendido</button></div>`);
+}
+
+function exportBackup(){
+  const data=JSON.stringify({...state, _photos: photos, _version:'v3', _exported: new Date().toISOString()},null,2);
+  const a=document.createElement('a');
+  a.href='data:application/json;charset=utf-8,'+encodeURIComponent(data);
+  a.download=`pukis_backup_${today()}.json`;
+  a.click();
+  toast('⬇ Backup descargado — guardalo en un lugar seguro');
+}
+
+function importBackup(input){
+  const file=input.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try {
+      const p=JSON.parse(e.target.result);
+      if(!p||(!p.orders&&!p.characters)){alert('Archivo inválido: no parece un backup de Pukis ERP');return;}
+      if(!confirm(`¿Importar backup?\nEsto reemplazará TODOS los datos actuales con los del archivo "${file.name}"`))return;
+      if(p._photos){photos=p._photos;delete p._photos;}
+      delete p._version; delete p._exported;
+      Object.assign(state, p);
+      save();
+      navigate('dashboard');
+      toast('✅ Backup importado correctamente');
+    } catch(err){alert('Error al leer el archivo: '+err.message);}
+  };
+  reader.readAsText(file);
+}
+
+async function resetData(){if(!confirm('¿Resetear TODOS los datos? Esta acción no se puede deshacer.'))return;photos={};seedData();await _saveToFirestore();navigate('dashboard');toast('♻️ Datos reseteados');}
+
+// ═══════════════════════════════════════════════════
+// IMPORT DATOS REALES (uso único)
+// ═══════════════════════════════════════════════════
+
+async function importMyData() {
+  if(state._realDataImported){toast('⚠️ Ya importado anteriormente');return;}
+  if(!confirm('¿Importar los datos reales?\nEsto AGREGA gastos y pedidos a los existentes (no borra nada).'))return;
+
+  // Nuevos personajes si no existen
+  if(!state.characters.find(c=>c.id==='zorrito')){
+    state.characters.push({id:'zorrito',name:'Zorrito',emoji:'🦊',type:'Zorro',color:'#E8844A',light:'#fdf0e8',_custom:true,traits:{ternura:4,curiosidad:5,jugabilidad:4,compania:3,valentia:4},ability:'Siempre encuentra el camino',story:''});
+    state.inventory['zorrito']={stock:0,minStock:3,price:18000,cost:5000};
+  }
+  if(!state.characters.find(c=>c.id==='estegosaurio')){
+    state.characters.push({id:'estegosaurio',name:'Estego',emoji:'🦖',type:'Estegosaurio',color:'#5B8C5A',light:'#eaf5e9',_custom:true,traits:{ternura:4,curiosidad:4,jugabilidad:5,compania:3,valentia:3},ability:'Sus púas brillan de noche',story:''});
+    state.inventory['estegosaurio']={stock:0,minStock:3,price:18000,cost:5000};
+  }
+
+  // ── GASTOS ──
+  // [fecha, desc, monto, cat, quien, _futura?, fechaVence?]
+  const GD=[
+    ['2026-02-27','Filamentos',76527,'Producción','franchinita'],
+    ['2026-03-05','Gotita (adhesivo)',2500,'Producción','franchinita'],
+    ['2026-03-05','Bolsas',2000,'Packaging','franchinita'],
+    ['2026-03-07','Filamentos',165197,'Producción','franchinita'],
+    ['2026-03-17','Cordón de Yute',5000,'Packaging','franchinita'],
+    ['2026-03-17','Viruta',1300,'Packaging','franchinita'],
+    ['2026-03-17','Saphirus',4550,'Packaging','chonchin'],
+    ['2026-03-18','Impresiones',5600,'Marketing','franchinita'],
+    ['2026-03-18','Filamentos — cuota 3/3',68192,'Producción','franchinita',true,'2026-03-18'],
+    ['2026-03-18','Cajas y pistolita',37574,'Packaging','franchinita'],
+    ['2026-03-19','Impresiones',3400,'Marketing','chonchin'],
+    ['2026-03-28','Impresiones',6600,'Marketing','franchinita'],
+    ['2026-04-06','Impresiones',8800,'Marketing','pukis'],
+    ['2026-04-08','Dominio web',8500,'Servicios','pukis'],
+    ['2026-04-09','Impresiones',2200,'Marketing','pukis'],
+    ['2026-04-11','Pegamento',2155.5,'Producción','pukis'],
+    ['2026-04-13','Tienda Nube',18749.25,'Servicios','pukis'],
+    ['2026-04-14','Filamento Hellbot — cuota 2/3',6330,'Producción','franchinita',true,'2026-04-14'],
+    ['2026-04-14','Registro marca',36000,'Servicios','pukis'],
+    ['2026-04-15','Prueba',100,'Otro','pukis'],
+    ['2026-04-20','Feria (costos)',32000,'Marketing','pukis'],
+    ['2026-04-20','Bolsas',11150,'Packaging','franchinita'],
+    ['2026-04-18','Filamentos — cuota 2/3',28403,'Producción','franchinita',true,'2026-04-18'],
+    ['2026-04-23','Impresiones feria',18300,'Marketing','pukis'],
+    ['2026-04-28','Gotita (adhesivo)',2500,'Producción','franchinita'],
+    ['2026-04-28','Cajas y Bolsas — cuota 2/3',18980.33,'Packaging','franchinita',true,'2026-04-28'],
+    ['2026-04-28','Viruta',12800,'Packaging','pukis'],
+    ['2026-04-28','Reviews app',9394.22,'Servicios','pukis'],
+    ['2026-04-28','Envío Pedido N°102',6318,'Logística','pukis'],
+    ['2026-04-29','Impresiones',31600,'Marketing','pukis'],
+  ];
+  GD.forEach(([fecha,desc,monto,cat,quien,_futura,fechaVence])=>{
+    state.gastos.push({id:uid(),fecha,desc,monto,cat,quien:quien||'pukis',_futura:!!_futura,fechaVence:fechaVence||''});
+  });
+
+  // ── PEDIDOS ──
+  const getCust=(name)=>{
+    if(!name||name==='Comprador feria'||name==='Tienda Nube') return {id:null,name:name||'—'};
+    let c=state.customers.find(x=>x.name.toLowerCase()===name.toLowerCase());
+    if(!c){c={id:uid(),name,email:'',phone:'',city:'',createdAt:'2026-03-01',notes:''};state.customers.push(c);}
+    return {id:c.id,name:c.name};
+  };
+  const mkOrd=(date,channel,cname,items,pago='pagado',status='entregado')=>{
+    const cu=getCust(cname);
+    const total=items.reduce((s,[,q,p])=>s+q*p,0);
+    return {id:uid(),date,channel,customerId:cu.id,customerName:cu.name,
+      items:items.map(([cid,qty,price])=>({cid,qty,price,mystery:cid==='mystery'})),
+      total,pago,status,fechaPago:'',notes:'',
+      history:[{ts:new Date().toISOString(),action:'Pedido importado',detail:`${ars(total)} · importado desde planilla`}]};
+  };
+  // [date, channel, customer, [[cid,qty,price]], pago?, status?]
+  const OD=[
+    mkOrd('2026-07-03','directo','Gianna',[['mystery',1,6000]],'sinpagar','pendiente'),
+    mkOrd('2026-03-26','directo','Lauti',[['chancho',1,15000]]),
+    mkOrd('2026-03-26','directo','Iva',[['estegosaurio',1,15000]]),
+    mkOrd('2026-03-27','directo','Abu Fran',[['abeja',1,10000]]),
+    mkOrd('2026-03-29','directo','Fito',[['zorrito',1,10000],['estegosaurio',1,10000],['elefante',1,10000],['abeja',1,10000]]),
+    mkOrd('2026-03-30','directo','Fito (Abu)',[['estegosaurio',1,10000]]),
+    mkOrd('2026-04-01','directo','Santi',[['zorrito',1,10000]]),
+    mkOrd('2026-04-06','directo','Iva',[['gato',1,15000]]),
+    mkOrd('2026-04-14','directo','Mama Fran',[['delfin',1,12000],['gato',1,12000],['perro',1,12000]]),
+    mkOrd('2026-04-23','directo','Santi friends',[['elefante',1,15000],['perro',1,15000]]),
+    mkOrd('2026-04-24','directo','Pablo',[['chancho',1,18000]]),
+    mkOrd('2026-04-26','feria','Comprador feria',[['perro',1,18000]]),
+    mkOrd('2026-04-26','feria','Comprador feria',[['elefante',1,18000]]),
+    mkOrd('2026-04-26','feria','Comprador feria',[['gato',1,5400]]),
+    mkOrd('2026-04-26','feria','Comprador feria',[['estegosaurio',1,5400]]),
+    mkOrd('2026-04-26','feria','Comprador feria',[['estegosaurio',1,5400]]),
+    mkOrd('2026-04-26','feria','Comprador feria',[['perro',1,5400]]),
+    mkOrd('2026-04-26','feria','Comprador feria',[['estegosaurio',3,5400]]),
+    mkOrd('2026-04-26','feria','Comprador feria',[['delfin',3,5400]]),
+    mkOrd('2026-04-26','feria','Comprador feria',[['perro',3,5400]]),
+    mkOrd('2026-04-26','feria','Comprador feria',[['perro',1,5400]]),
+    mkOrd('2026-04-26','feria','Comprador feria',[['gato',1,18000]]),
+    mkOrd('2026-04-26','feria','Comprador feria',[['perro',1,15000]]),
+    mkOrd('2026-04-26','feria','Comprador feria',[['abeja',1,18000]]),
+    mkOrd('2026-04-27','tiendanube','Tienda Nube',[['chancho',1,16200]]),
+    mkOrd('2026-04-27','tiendanube','Tienda Nube',[['abeja',1,18000]]),
+    mkOrd('2026-04-29','tiendanube','Tienda Nube',[['estegosaurio',1,18000]]),
+    mkOrd('2026-04-30','tiendanube','Tienda Nube',[['gato',1,18000]]),
+  ];
+  OD.forEach(o=>state.orders.push(o));
+
+  state._realDataImported=true;
+  console.log('💾 Guardando en Firestore... orders total:', state.orders.length, '| gastos total:', state.gastos.length);
+  try {
+    await _saveToFirestore();
+    console.log('✅ Guardado OK');
+    toast('✅ '+GD.length+' gastos y '+OD.length+' pedidos importados correctamente');
+    navigate('dashboard');
+  } catch(e) {
+    console.error('❌ Error guardando importación:', e);
+    toast('❌ Error al guardar: '+e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// LOGIN / LOGOUT
+// ═══════════════════════════════════════════════════
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('login-btn');
+  errEl.textContent = '';
+  if (!email || !pass) { errEl.textContent = 'Completá email y contraseña.'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Ingresando...';
+  try {
+    await window._fbSignIn(email, pass);
+    // onAuthStateChanged se encarga del resto
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Entrar →';
+    const msgs = {
+      'auth/invalid-credential': 'Email o contraseña incorrectos.',
+      'auth/user-not-found': 'Usuario no encontrado.',
+      'auth/wrong-password': 'Contraseña incorrecta.',
+      'auth/too-many-requests': 'Demasiados intentos. Esperá un momento.',
+    };
+    errEl.textContent = msgs[e.code] || 'Error al ingresar. Intentá de nuevo.';
+  }
+}
+
+async function doLogout() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  await window._fbSignOut();
+}
+
+// ═══════════════════════════════════════════════════
+// INIT (llamado por onAuthStateChanged cuando hay usuario)
+// ═══════════════════════════════════════════════════
+
+function toggleMobileMenu(){
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sidebar-overlay');
+  const isOpen=sb.classList.contains('mob-open');
+  sb.classList.toggle('mob-open',!isOpen);
+  ov.classList.toggle('open',!isOpen);
+}
+function closeMobileMenu(){
+  document.getElementById('sidebar').classList.remove('mob-open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
+
+function initApp() {
+  document.querySelectorAll('.nav-item[data-mod]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      e.preventDefault();
+      navigate(el.dataset.mod);
+      closeMobileMenu(); // cerrar menú en mobile al navegar
+    });
+  });
+  document.getElementById('mo').addEventListener('click',e=>{if(e.target===document.getElementById('mo'))closeModal();});
+
+  // Auto-cobro al iniciar
+  checkAutoPayments();
+
+  // Auto-guardado cada 60 segundos
+  setInterval(() => save(), 60000);
+
+  // Verificar cobros automáticos cada 1 hora (por si la app queda abierta)
+  setInterval(() => checkAutoPayments(), 3600000);
+
+  navigate('dashboard');
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  // El inicio real lo maneja onAuthStateChanged en el módulo Firebase
+  // Solo configurar el Enter en el campo de email
+  document.getElementById('login-email')?.addEventListener('keydown', e=>{
+    if(e.key==='Enter') document.getElementById('login-pass')?.focus();
+  });
+});
+</script>
+</body>
+</html>
